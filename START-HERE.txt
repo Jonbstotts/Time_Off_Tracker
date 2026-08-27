@@ -1,0 +1,26 @@
+TIME OFF TRACKER 1.2
+====================
+
+Java 21 + Swing + FlatLaf + SQLite
+
+BUILD
+-----
+1. Open Terminal in this project folder.
+2. Run: mvn clean package
+3. Run: java -jar target/time-off-tracker.jar
+
+NEW IN 1.2
+----------
+- Fixes populated calendar days appearing vertically compressed on initial startup.
+- Adds Import Annual Schedule for PDF, DOCX, TXT, and CSV files.
+- Detects holiday, Limited Service, and Working Holiday dates.
+- Preserves a holiday/event descriptor such as Labor Day, Thanksgiving, or Christmas.
+- Shows all detected schedule entries in a review table before importing.
+- Existing calendar dates are not automatically overwritten.
+
+DATA
+----
+Your database remains outside the project at:
+~/.timeofftracker/timeoff.db
+
+Replacing/rebuilding the application does not delete that database.
