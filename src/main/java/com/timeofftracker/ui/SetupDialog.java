@@ -34,10 +34,9 @@ public class SetupDialog extends JDialog {
         heading.setLayout(new BoxLayout(heading, BoxLayout.Y_AXIS));
         heading.add(AppTheme.title(firstRun ? "Set up your time off" : "Time off settings"));
         heading.add(Box.createVerticalStrut(5));
-        JLabel sub = new JLabel(firstRun
+        JLabel sub = AppTheme.muted(new JLabel(firstRun
                 ? "Enter your yearly allowances. You can change them later from Settings."
-                : "Update the allowance and standard workday for this year.");
-        sub.setForeground(AppTheme.MUTED);
+                : "Update the allowance and standard workday for this year."));
         heading.add(sub);
         root.add(heading, BorderLayout.NORTH);
 
@@ -67,6 +66,7 @@ public class SetupDialog extends JDialog {
         root.add(actions, BorderLayout.SOUTH);
 
         setContentPane(root);
+        ThemeManager.applyThemeRoles(root);
         pack();
         setSize(Math.max(getWidth(), 480), getHeight());
         setLocationRelativeTo(owner);
@@ -89,9 +89,7 @@ public class SetupDialog extends JDialog {
         panel.add(field, g);
     }
 
-    public boolean wasSaved() {
-        return saved;
-    }
+    public boolean wasSaved() { return saved; }
 
     public TimeOffYear getSettings() {
         return new TimeOffYear(
