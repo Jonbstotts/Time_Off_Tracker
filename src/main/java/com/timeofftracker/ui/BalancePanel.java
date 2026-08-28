@@ -8,7 +8,7 @@ import java.awt.*;
 public class BalancePanel extends JPanel {
     private final MetricCard vacation = new MetricCard("Vacation", AppTheme.VACATION);
     private final MetricCard eto = new MetricCard("Emergency Time Off (ETO)", AppTheme.ETO);
-    private final JLabel totalLabel = new JLabel();
+    private final JLabel totalLabel = AppTheme.muted(new JLabel());
 
     public BalancePanel() {
         setLayout(new BorderLayout(12, 12));
@@ -21,7 +21,6 @@ public class BalancePanel extends JPanel {
         add(cards, BorderLayout.CENTER);
 
         totalLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        totalLabel.setForeground(AppTheme.MUTED);
         totalLabel.putClientProperty("FlatLaf.style", "font: +1");
         add(totalLabel, BorderLayout.SOUTH);
     }
@@ -35,16 +34,17 @@ public class BalancePanel extends JPanel {
     private static class MetricCard extends JPanel {
         private final JLabel name = new JLabel();
         private final JLabel remaining = new JLabel();
-        private final JLabel detail = new JLabel();
+        private final JLabel detail = AppTheme.muted(new JLabel());
         private final JProgressBar progress = new JProgressBar(0, 1000);
+        private final Color categoryAccent;
 
         MetricCard(String title, Color accent) {
             super(new BorderLayout(8, 8));
+            this.categoryAccent = accent;
             name.setText(title.toUpperCase());
             name.setForeground(accent);
             name.putClientProperty("FlatLaf.style", "font: bold +1");
             remaining.putClientProperty("FlatLaf.style", "font: bold +9");
-            detail.setForeground(AppTheme.MUTED);
 
             JPanel text = new JPanel();
             text.setOpaque(false);
@@ -57,12 +57,25 @@ public class BalancePanel extends JPanel {
 
             progress.setStringPainted(false);
             progress.setPreferredSize(new Dimension(100, 7));
+            progress.setForeground(categoryAccent);
             progress.putClientProperty("FlatLaf.style", "arc: 999");
 
             add(text, BorderLayout.CENTER);
             add(progress, BorderLayout.SOUTH);
-            putClientProperty("FlatLaf.style", "arc: 18; background: lighten(@background,3%)");
+            putClientProperty("FlatLaf.style", "arc: 18; borderWidth: 0");
+            putClientProperty(ThemeManager.ROLE, ThemeManager.ROLE_SURFACE);
+            setOpaque(true);
+            setBackground(ThemeManager.surfaceColor());
+            setForeground(ThemeManager.textColor());
             setBorder(BorderFactory.createEmptyBorder(15, 17, 14, 17));
+        }
+
+        @Override
+        public void updateUI() {
+            super.updateUI();
+            if (categoryAccent != null) progress.setForeground(categoryAccent);
+            setBackground(ThemeManager.surfaceColor());
+            setForeground(ThemeManager.textColor());
         }
 
         void setValues(double allowance, double used, double scheduled, double remainingHours, long count) {
