@@ -15,7 +15,7 @@ public final class TimeOffTrackerApp {
             try {
                 ThemeManager.applySavedTheme();
             } catch (Exception ignored) {
-                ThemeManager.applyTheme(ThemeManager.Theme.LIGHT, false);
+                ThemeManager.applyTheme(ThemeManager.Theme.FLAT_LIGHT, false);
             }
             new TimeOffTrackerFrame().setVisible(true);
         });
