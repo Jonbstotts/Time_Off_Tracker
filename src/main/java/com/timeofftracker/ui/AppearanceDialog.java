@@ -3,6 +3,8 @@ package com.timeofftracker.ui;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.util.EnumMap;
 import java.util.Map;
 
@@ -13,14 +15,20 @@ public class AppearanceDialog extends JDialog {
     private final PreviewPanel preview = new PreviewPanel();
     private final JLabel description = new JLabel();
     private boolean saved;
+    private boolean loading;
 
     public AppearanceDialog(Window owner) {
         super(owner, "Appearance", ModalityType.APPLICATION_MODAL);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setContentPane(buildContent());
+        addWindowListener(new WindowAdapter() {
+            @Override public void windowClosed(WindowEvent e) {
+                if (!saved) ThemeManager.applySavedTheme();
+            }
+        });
         loadValues();
         pack();
-        setMinimumSize(new Dimension(680, 620));
+        setMinimumSize(new Dimension(700, 640));
         setLocationRelativeTo(owner);
     }
 
@@ -32,7 +40,7 @@ public class AppearanceDialog extends JDialog {
         heading.setOpaque(false);
         heading.setLayout(new BoxLayout(heading, BoxLayout.Y_AXIS));
         heading.add(AppTheme.title("Appearance & Themes"));
-        JLabel sub = AppTheme.muted(new JLabel("Choose an everyday look or let Time Off Tracker switch themes automatically for holidays."));
+        JLabel sub = AppTheme.muted(new JLabel("Choose an official FlatLaf theme or let Time Off Tracker switch themes automatically for holidays."));
         heading.add(Box.createVerticalStrut(5));
         heading.add(sub);
         root.add(heading, BorderLayout.NORTH);
@@ -47,7 +55,7 @@ public class AppearanceDialog extends JDialog {
         picker.add(AppTheme.sectionTitle("Base theme"), BorderLayout.NORTH);
         picker.add(themeCombo, BorderLayout.CENTER);
         themeCard.add(picker, BorderLayout.NORTH);
-        preview.setPreferredSize(new Dimension(580, 150));
+        preview.setPreferredSize(new Dimension(600, 150));
         themeCard.add(preview, BorderLayout.CENTER);
         description.setBorder(new EmptyBorder(3, 0, 0, 0));
         themeCard.add(description, BorderLayout.SOUTH);
@@ -66,13 +74,13 @@ public class AppearanceDialog extends JDialog {
         JPanel events = new JPanel(new GridLayout(0, 2, 8, 5));
         events.setOpaque(false);
         for (ThemeManager.SeasonalEvent event : ThemeManager.SeasonalEvent.values()) {
-            JCheckBox box = new JCheckBox(event.displayName());
+            JCheckBox box = new JCheckBox(event.displayName() + " → " + event.theme().displayName());
             box.setOpaque(false);
             eventChecks.put(event, box);
             events.add(box);
         }
         seasonalCard.add(events, BorderLayout.CENTER);
-        JLabel note = AppTheme.muted(new JLabel("Seasonal themes temporarily override the base theme, then return to it automatically."));
+        JLabel note = AppTheme.muted(new JLabel("Seasonal choices now use real FlatLaf themes and return to your base theme automatically."));
         seasonalCard.add(note, BorderLayout.SOUTH);
         center.add(seasonalCard);
 
@@ -81,7 +89,10 @@ public class AppearanceDialog extends JDialog {
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         buttons.setOpaque(false);
         JButton cancel = new JButton("Cancel");
-        cancel.addActionListener(e -> dispose());
+        cancel.addActionListener(e -> {
+            ThemeManager.applySavedTheme();
+            dispose();
+        });
         JButton save = AppTheme.primaryButton("Save Appearance");
         save.addActionListener(e -> save());
         getRootPane().setDefaultButton(save);
@@ -96,9 +107,11 @@ public class AppearanceDialog extends JDialog {
     }
 
     private void loadValues() {
+        loading = true;
         themeCombo.setSelectedItem(ThemeManager.savedTheme());
         automatic.setSelected(ThemeManager.automaticSeasonalThemes());
         for (var entry : eventChecks.entrySet()) entry.getValue().setSelected(ThemeManager.isEventEnabled(entry.getKey()));
+        loading = false;
         updateSeasonalEnabled();
         refreshPreview();
     }
@@ -109,33 +122,33 @@ public class AppearanceDialog extends JDialog {
     }
 
     private void refreshPreview() {
+        if (loading) return;
         ThemeManager.Theme theme = (ThemeManager.Theme) themeCombo.getSelectedItem();
         if (theme == null) return;
-        description.setText("<html>" + theme.description() + "</html>");
-        preview.setTheme(theme);
+        ThemeManager.applyTheme(theme, false);
+        description.setText("<html>" + theme.description() + " Changes are previewed live; Cancel restores the saved theme.</html>");
+        preview.repaint();
     }
 
     private void save() {
         ThemeManager.Theme theme = (ThemeManager.Theme) themeCombo.getSelectedItem();
         Map<ThemeManager.SeasonalEvent, Boolean> enabled = new EnumMap<>(ThemeManager.SeasonalEvent.class);
         for (var entry : eventChecks.entrySet()) enabled.put(entry.getKey(), entry.getValue().isSelected());
-        ThemeManager.saveAppearance(theme == null ? ThemeManager.Theme.LIGHT : theme, automatic.isSelected(), enabled);
         saved = true;
+        ThemeManager.saveAppearance(theme == null ? ThemeManager.Theme.FLAT_LIGHT : theme, automatic.isSelected(), enabled);
         dispose();
     }
 
     public boolean wasSaved() { return saved; }
 
     private static class PreviewPanel extends JPanel {
-        private ThemeManager.Theme theme = ThemeManager.Theme.LIGHT;
         PreviewPanel() { setOpaque(false); }
-        void setTheme(ThemeManager.Theme theme) { this.theme = theme; repaint(); }
 
         @Override protected void paintComponent(Graphics g) {
             super.paintComponent(g);
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            ThemeManager.Palette p = ThemeManager.paletteForPreview(theme);
+            ThemeManager.Palette p = ThemeManager.palette();
 
             int w = getWidth(), h = getHeight();
             g2.setColor(p.background());
@@ -157,9 +170,9 @@ public class AppearanceDialog extends JDialog {
             g2.drawString("Primary action", w - 146, 49);
 
             g2.setColor(p.text());
-            g2.drawString(theme.displayName(), 34, 47);
+            g2.drawString(ThemeManager.appliedTheme().displayName(), 34, 47);
             g2.setColor(p.mutedText());
-            g2.drawString("Calendar • balances • schedule", 34, 68);
+            g2.drawString("Official FlatLaf look and feel", 34, 68);
 
             g2.setColor(p.text());
             g2.drawString("12", 44, cellY + 21);
