@@ -13,7 +13,6 @@ public final class AppTheme {
     public static final Color LIMITED_SERVICE = new Color(176, 122, 161);
     public static final Color WORKING_HOLIDAY = new Color(237, 201, 72);
     public static final Color TODAY = new Color(89, 161, 79);
-    public static final Color MUTED = new Color(120, 120, 120);
 
     public static Color colorFor(com.timeofftracker.model.TimeOffType type) {
         return switch (type) {
@@ -26,12 +25,16 @@ public final class AppTheme {
     }
 
     public static Color textColorFor(com.timeofftracker.model.TimeOffType type) {
-        return type == com.timeofftracker.model.TimeOffType.WORKING_HOLIDAY ? new Color(45, 45, 45) : Color.WHITE;
+        return ThemeManager.contrastText(colorFor(type));
     }
 
     public static JPanel card(LayoutManager layout) {
         JPanel p = new JPanel(layout);
-        p.putClientProperty("FlatLaf.style", "arc: 18; borderWidth: 0; background: lighten(@background,3%)");
+        p.putClientProperty("FlatLaf.style", "arc: 18; borderWidth: 0");
+        p.putClientProperty(ThemeManager.ROLE, ThemeManager.ROLE_SURFACE);
+        p.setBackground(ThemeManager.surfaceColor());
+        p.setForeground(ThemeManager.textColor());
+        p.setOpaque(true);
         p.setBorder(new EmptyBorder(16, 18, 16, 18));
         return p;
     }
@@ -48,9 +51,18 @@ public final class AppTheme {
         return l;
     }
 
+    public static <T extends JComponent> T muted(T component) {
+        component.putClientProperty(ThemeManager.ROLE, ThemeManager.ROLE_MUTED);
+        component.setForeground(ThemeManager.mutedTextColor());
+        return component;
+    }
+
     public static JButton primaryButton(String text) {
         JButton b = new JButton(text);
         b.putClientProperty("FlatLaf.style", "arc: 12; font: bold; margin: 8,16,8,16");
+        b.putClientProperty(ThemeManager.ROLE, ThemeManager.ROLE_PRIMARY);
+        b.setBackground(ThemeManager.palette().accent());
+        b.setForeground(ThemeManager.contrastText(ThemeManager.palette().accent()));
         return b;
     }
 }
