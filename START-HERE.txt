@@ -1,4 +1,4 @@
-TIME OFF TRACKER 1.2
+TIME OFF TRACKER 1.3
 ====================
 
 Java 21 + Swing + FlatLaf + SQLite
@@ -9,14 +9,24 @@ BUILD
 2. Run: mvn clean package
 3. Run: java -jar target/time-off-tracker.jar
 
-NEW IN 1.2
+MAC APP BUILD
+-------------
+After giving the script executable permission once, double-click:
+Build Time Off Tracker.command
+
+It builds the JAR and creates:
+dist/Time Off Tracker.app
+
+NEW IN 1.3
 ----------
-- Fixes populated calendar days appearing vertically compressed on initial startup.
-- Adds Import Annual Schedule for PDF, DOCX, TXT, and CSV files.
-- Detects holiday, Limited Service, and Working Holiday dates.
-- Preserves a holiday/event descriptor such as Labor Day, Thanksgiving, or Christmas.
-- Shows all detected schedule entries in a review table before importing.
-- Existing calendar dates are not automatically overwritten.
+- Replaces the simple Dark Mode toggle with a full Appearance window.
+- Adds 20 selectable themes including everyday and holiday themes.
+- Adds Follow System, Light, Dark, Midnight, Graphite, Ocean, Forest, Warm Sand, Slate Blue, and High Contrast.
+- Adds Halloween, Thanksgiving, Christmas, New Year, Valentine's Day, St. Patrick's Day, Easter/Spring, Memorial Day, Independence Day, and Labor Day themes.
+- Adds visual theme previews.
+- Adds optional automatic seasonal theme switching.
+- Allows each seasonal theme to be enabled or disabled independently.
+- Automatically returns to your selected base theme after a seasonal window ends.
 
 DATA
 ----

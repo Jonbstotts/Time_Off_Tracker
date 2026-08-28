@@ -15,7 +15,7 @@ public class MainPanel extends JPanel {
     private final BalancePanel balancePanel = new BalancePanel();
     private final CalendarPanel calendarPanel;
     private final JLabel yearInfo = new JLabel();
-    private final JToggleButton darkMode = new JToggleButton("Dark Mode");
+    private final JButton appearance = new JButton();
 
     public MainPanel(Window owner, TimeOffService service) {
         super(new BorderLayout(18, 18));
@@ -51,15 +51,10 @@ public class MainPanel extends JPanel {
         JPanel controls = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         controls.setOpaque(false);
 
-        darkMode.setSelected(ThemeManager.isDark());
-        darkMode.putClientProperty("FlatLaf.style", "arc: 12; margin: 7,14,7,14");
-        darkMode.addActionListener(e -> {
-            ThemeManager.applyTheme(darkMode.isSelected() ? ThemeManager.Theme.DARK : ThemeManager.Theme.LIGHT, true);
-            darkMode.setText(darkMode.isSelected() ? "Light Mode" : "Dark Mode");
-            calendarPanel.refresh();
-        });
-        darkMode.setText(darkMode.isSelected() ? "Light Mode" : "Dark Mode");
-        controls.add(darkMode);
+        updateAppearanceButton();
+        appearance.putClientProperty("FlatLaf.style", "arc: 12; margin: 7,14,7,14");
+        appearance.addActionListener(e -> openAppearance());
+        controls.add(appearance);
 
         JButton importSchedule = new JButton("Import Annual Schedule");
         importSchedule.putClientProperty("FlatLaf.style", "arc: 12; margin: 7,14,7,14");
@@ -75,6 +70,23 @@ public class MainPanel extends JPanel {
         top.add(header, BorderLayout.NORTH);
         top.add(balancePanel, BorderLayout.CENTER);
         return top;
+    }
+
+    private void openAppearance() {
+        AppearanceDialog dialog = new AppearanceDialog(owner);
+        dialog.setVisible(true);
+        if (dialog.wasSaved()) {
+            updateAppearanceButton();
+            calendarPanel.refresh();
+            refreshSummary();
+        }
+    }
+
+    private void updateAppearanceButton() {
+        ThemeManager.Theme effective = ThemeManager.effectiveThemeToday();
+        appearance.setText("Appearance");
+        String auto = ThemeManager.automaticSeasonalThemes() ? " • Auto seasonal on" : "";
+        appearance.setToolTipText("Current theme: " + effective.displayName() + auto);
     }
 
     private void openDate(LocalDate date) {
