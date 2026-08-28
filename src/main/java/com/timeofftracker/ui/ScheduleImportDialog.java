@@ -25,8 +25,8 @@ public class ScheduleImportDialog extends JDialog {
     private final ScheduleImportService importer = new ScheduleImportService();
     private final ImportTableModel model = new ImportTableModel();
     private final JTable table = new JTable(model);
-    private final JLabel fileLabel = new JLabel("No schedule selected");
-    private final JLabel summaryLabel = new JLabel("Choose an annual schedule document to preview detected calendar days.");
+    private final JLabel fileLabel = AppTheme.muted(new JLabel("No schedule selected"));
+    private final JLabel summaryLabel = AppTheme.muted(new JLabel("Choose an annual schedule document to preview detected calendar days."));
     private boolean imported;
 
     public ScheduleImportDialog(Window owner, TimeOffService service, int targetYear) {
@@ -45,8 +45,7 @@ public class ScheduleImportDialog extends JDialog {
         heading.setLayout(new BoxLayout(heading, BoxLayout.Y_AXIS));
         heading.add(AppTheme.title("Import " + targetYear + " Annual Schedule"));
         heading.add(Box.createVerticalStrut(4));
-        JLabel hint = new JLabel("PDF, DOCX, TXT, and CSV schedules are supported. Review the detected days before importing.");
-        hint.setForeground(AppTheme.MUTED);
+        JLabel hint = AppTheme.muted(new JLabel("PDF, DOCX, TXT, and CSV schedules are supported. Review the detected days before importing."));
         heading.add(hint);
         root.add(heading, BorderLayout.NORTH);
 
@@ -57,7 +56,6 @@ public class ScheduleImportDialog extends JDialog {
         JButton choose = new JButton("Choose Schedule Document…");
         choose.addActionListener(e -> chooseFile());
         chooserRow.add(choose, BorderLayout.WEST);
-        fileLabel.setForeground(AppTheme.MUTED);
         chooserRow.add(fileLabel, BorderLayout.CENTER);
         center.add(chooserRow, BorderLayout.NORTH);
 
@@ -75,7 +73,6 @@ public class ScheduleImportDialog extends JDialog {
         table.getColumnModel().getColumn(4).setPreferredWidth(160);
         center.add(new JScrollPane(table), BorderLayout.CENTER);
 
-        summaryLabel.setForeground(AppTheme.MUTED);
         center.add(summaryLabel, BorderLayout.SOUTH);
         root.add(center, BorderLayout.CENTER);
 
@@ -90,6 +87,7 @@ public class ScheduleImportDialog extends JDialog {
         root.add(actions, BorderLayout.SOUTH);
 
         setContentPane(root);
+        ThemeManager.applyThemeRoles(root);
         setMinimumSize(new Dimension(850, 520));
         setSize(940, 620);
         setLocationRelativeTo(getOwner());
@@ -154,9 +152,7 @@ public class ScheduleImportDialog extends JDialog {
         }
     }
 
-    public boolean wasImported() {
-        return imported;
-    }
+    public boolean wasImported() { return imported; }
 
     private static final class ImportRow {
         boolean selected;
