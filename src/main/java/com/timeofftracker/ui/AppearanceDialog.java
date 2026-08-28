@@ -32,8 +32,7 @@ public class AppearanceDialog extends JDialog {
         heading.setOpaque(false);
         heading.setLayout(new BoxLayout(heading, BoxLayout.Y_AXIS));
         heading.add(AppTheme.title("Appearance & Themes"));
-        JLabel sub = new JLabel("Choose an everyday look or let Time Off Tracker switch themes automatically for holidays.");
-        sub.setForeground(AppTheme.MUTED);
+        JLabel sub = AppTheme.muted(new JLabel("Choose an everyday look or let Time Off Tracker switch themes automatically for holidays."));
         heading.add(Box.createVerticalStrut(5));
         heading.add(sub);
         root.add(heading, BorderLayout.NORTH);
@@ -48,7 +47,7 @@ public class AppearanceDialog extends JDialog {
         picker.add(AppTheme.sectionTitle("Base theme"), BorderLayout.NORTH);
         picker.add(themeCombo, BorderLayout.CENTER);
         themeCard.add(picker, BorderLayout.NORTH);
-        preview.setPreferredSize(new Dimension(580, 135));
+        preview.setPreferredSize(new Dimension(580, 150));
         themeCard.add(preview, BorderLayout.CENTER);
         description.setBorder(new EmptyBorder(3, 0, 0, 0));
         themeCard.add(description, BorderLayout.SOUTH);
@@ -73,8 +72,7 @@ public class AppearanceDialog extends JDialog {
             events.add(box);
         }
         seasonalCard.add(events, BorderLayout.CENTER);
-        JLabel note = new JLabel("Seasonal themes temporarily override the base theme, then return to it automatically.");
-        note.setForeground(AppTheme.MUTED);
+        JLabel note = AppTheme.muted(new JLabel("Seasonal themes temporarily override the base theme, then return to it automatically."));
         seasonalCard.add(note, BorderLayout.SOUTH);
         center.add(seasonalCard);
 
@@ -93,6 +91,7 @@ public class AppearanceDialog extends JDialog {
 
         themeCombo.addActionListener(e -> refreshPreview());
         automatic.addActionListener(e -> updateSeasonalEnabled());
+        ThemeManager.applyThemeRoles(root);
         return root;
     }
 
@@ -136,28 +135,41 @@ public class AppearanceDialog extends JDialog {
             super.paintComponent(g);
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            ThemeManager.Theme effective = theme == ThemeManager.Theme.SYSTEM ? ThemeManager.appliedTheme() : theme;
-            Color bg = ThemeManager.backgroundFor(effective);
-            if (bg == null) bg = effective.dark() ? new Color(48, 50, 54) : new Color(246, 247, 249);
-            Color surface = effective.dark() ? bg.brighter() : bg.darker();
-            Color text = effective.dark() ? Color.WHITE : new Color(40, 42, 46);
+            ThemeManager.Palette p = ThemeManager.paletteForPreview(theme);
 
             int w = getWidth(), h = getHeight();
-            g2.setColor(bg);
+            g2.setColor(p.background());
             g2.fillRoundRect(0, 5, w, h - 10, 18, 18);
-            g2.setColor(surface);
-            g2.fillRoundRect(18, 24, Math.max(120, w - 210), h - 48, 14, 14);
-            g2.setColor(effective.accent());
-            g2.fillRoundRect(w - 172, 24, 145, 40, 12, 12);
-            g2.setColor(ThemeManager.contrastText(effective.accent()));
-            g2.drawString("Primary action", w - 145, 49);
-            g2.setColor(text);
-            g2.drawString(effective.displayName(), 34, 49);
-            g2.setColor(new Color(text.getRed(), text.getGreen(), text.getBlue(), 150));
-            g2.drawString("Calendar • balances • schedule", 34, 73);
-            g2.setColor(AppTheme.VACATION); g2.fillRoundRect(34, 89, 66, 18, 8, 8);
-            g2.setColor(AppTheme.ETO); g2.fillRoundRect(108, 89, 50, 18, 8, 8);
-            g2.setColor(AppTheme.HOLIDAY); g2.fillRoundRect(166, 89, 66, 18, 8, 8);
+
+            g2.setColor(p.surface());
+            g2.fillRoundRect(18, 22, Math.max(150, w - 215), h - 44, 14, 14);
+
+            g2.setColor(p.calendarCell());
+            int cellY = 80;
+            g2.fillRoundRect(34, cellY, 68, 34, 8, 8);
+            g2.fillRoundRect(108, cellY, 68, 34, 8, 8);
+            g2.setColor(p.adjacentCell());
+            g2.fillRoundRect(182, cellY, 68, 34, 8, 8);
+
+            g2.setColor(p.accent());
+            g2.fillRoundRect(w - 174, 24, 147, 40, 12, 12);
+            g2.setColor(ThemeManager.contrastText(p.accent()));
+            g2.drawString("Primary action", w - 146, 49);
+
+            g2.setColor(p.text());
+            g2.drawString(theme.displayName(), 34, 47);
+            g2.setColor(p.mutedText());
+            g2.drawString("Calendar • balances • schedule", 34, 68);
+
+            g2.setColor(p.text());
+            g2.drawString("12", 44, cellY + 21);
+            g2.drawString("13", 118, cellY + 21);
+            g2.setColor(p.mutedText());
+            g2.drawString("14", 192, cellY + 21);
+
+            g2.setColor(AppTheme.VACATION); g2.fillRoundRect(34, 124, 66, 8, 8, 8);
+            g2.setColor(AppTheme.ETO); g2.fillRoundRect(108, 124, 50, 8, 8, 8);
+            g2.setColor(AppTheme.HOLIDAY); g2.fillRoundRect(166, 124, 66, 8, 8, 8);
             g2.dispose();
         }
     }
