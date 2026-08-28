@@ -16,7 +16,7 @@ public class TimeOffDialog extends JDialog {
     private final JTextArea notesArea = new JTextArea(4, 28);
     private final JLabel statusLabel = new JLabel("Status");
     private final JLabel hoursLabel = new JLabel("Hours");
-    private final JLabel categoryHint = new JLabel();
+    private final JLabel categoryHint = AppTheme.muted(new JLabel());
     private Result result = Result.CANCEL;
     private final long existingId;
     private final LocalDate date;
@@ -52,12 +52,10 @@ public class TimeOffDialog extends JDialog {
         heading.setLayout(new BoxLayout(heading, BoxLayout.Y_AXIS));
         JLabel title = AppTheme.title(date.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")));
         heading.add(title);
-        JLabel sub = new JLabel(editing ? "Update or remove this calendar entry." : "Choose how this day should be recorded.");
-        sub.setForeground(AppTheme.MUTED);
+        JLabel sub = AppTheme.muted(new JLabel(editing ? "Update or remove this calendar entry." : "Choose how this day should be recorded."));
         heading.add(Box.createVerticalStrut(4));
         heading.add(sub);
         heading.add(Box.createVerticalStrut(6));
-        categoryHint.setForeground(AppTheme.MUTED);
         categoryHint.putClientProperty("FlatLaf.style", "font: -1");
         heading.add(categoryHint);
         root.add(heading, BorderLayout.NORTH);
@@ -115,6 +113,7 @@ public class TimeOffDialog extends JDialog {
         root.add(actions, BorderLayout.SOUTH);
 
         setContentPane(root);
+        ThemeManager.applyThemeRoles(root);
         pack();
         setLocationRelativeTo(getOwner());
     }
