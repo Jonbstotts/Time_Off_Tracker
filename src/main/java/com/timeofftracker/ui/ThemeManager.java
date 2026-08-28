@@ -55,6 +55,20 @@ public final class ThemeManager {
         @Override public String toString() { return displayName; }
     }
 
+    public record Palette(
+            Color background,
+            Color surface,
+            Color surfaceAlt,
+            Color calendarCell,
+            Color adjacentCell,
+            Color text,
+            Color mutedText,
+            Color control,
+            Color controlHover,
+            Color border,
+            Color accent
+    ) {}
+
     public enum SeasonalEvent {
         NEW_YEAR("New Year", Theme.NEW_YEAR),
         VALENTINES("Valentine's Day", Theme.VALENTINES),
@@ -74,11 +88,18 @@ public final class ThemeManager {
         public Theme theme() { return theme; }
     }
 
+    public static final String ROLE = "timeoff.themeRole";
+    public static final String ROLE_MUTED = "muted";
+    public static final String ROLE_SURFACE = "surface";
+    public static final String ROLE_SURFACE_ALT = "surfaceAlt";
+    public static final String ROLE_PRIMARY = "primary";
+
     private static final Preferences PREFS = Preferences.userNodeForPackage(ThemeManager.class);
     private static final String KEY_THEME = "theme.v2";
     private static final String KEY_AUTO = "automaticSeasonalThemes";
     private static final String EVENT_PREFIX = "seasonal.";
     private static Theme appliedTheme = Theme.LIGHT;
+    private static Palette appliedPalette = paletteFor(Theme.LIGHT);
 
     private ThemeManager() {}
 
@@ -113,14 +134,20 @@ public final class ThemeManager {
     public static void applyTheme(Theme theme, boolean persist) {
         Theme actual = theme == Theme.SYSTEM ? systemTheme() : theme;
         if (actual.dark()) FlatDarkLaf.setup(); else FlatLightLaf.setup();
-        installDefaults(actual);
         appliedTheme = actual;
+        appliedPalette = paletteFor(actual);
+        installDefaults(appliedPalette);
         if (persist) PREFS.put(KEY_THEME, theme.name());
         refreshWindows();
     }
 
     public static Theme effectiveThemeToday() { return resolveEffectiveTheme(LocalDate.now()); }
     public static Theme appliedTheme() { return appliedTheme; }
+    public static Palette palette() { return appliedPalette; }
+    public static Palette paletteForPreview(Theme theme) {
+        Theme actual = theme == Theme.SYSTEM ? systemTheme() : theme;
+        return paletteFor(actual);
+    }
     public static boolean isDark() { return appliedTheme.dark(); }
 
     private static Theme resolveEffectiveTheme(LocalDate date) {
@@ -134,8 +161,7 @@ public final class ThemeManager {
 
     static SeasonalEvent seasonalEventFor(LocalDate date) {
         int year = date.getYear();
-        if (isBetween(date, LocalDate.of(year, 12, 31), LocalDate.of(year, 12, 31)) ||
-                isBetween(date, LocalDate.of(year, 1, 1), LocalDate.of(year, 1, 2))) return SeasonalEvent.NEW_YEAR;
+        if (date.equals(LocalDate.of(year, 12, 31)) || isBetween(date, LocalDate.of(year, 1, 1), LocalDate.of(year, 1, 2))) return SeasonalEvent.NEW_YEAR;
         if (isBetween(date, LocalDate.of(year, 2, 1), LocalDate.of(year, 2, 14))) return SeasonalEvent.VALENTINES;
         if (isBetween(date, LocalDate.of(year, 3, 1), LocalDate.of(year, 3, 17))) return SeasonalEvent.ST_PATRICKS;
 
@@ -179,77 +205,166 @@ public final class ThemeManager {
         return combined.toLowerCase().contains("dark") ? Theme.DARK : Theme.LIGHT;
     }
 
-    private static void installDefaults(Theme theme) {
+    private static void installDefaults(Palette p) {
         UIManager.put("Component.arc", 12);
         UIManager.put("Button.arc", 12);
         UIManager.put("TextComponent.arc", 10);
         UIManager.put("ScrollBar.width", 12);
-        Color accent = theme.accent();
-        UIManager.put("Component.focusColor", accent);
-        UIManager.put("Component.accentColor", accent);
-        UIManager.put("ProgressBar.foreground", accent);
-        UIManager.put("TabbedPane.underlineColor", accent);
-        UIManager.put("Button.default.background", accent);
-        UIManager.put("Button.default.foreground", contrastText(accent));
 
-        Color bg = backgroundFor(theme);
-        if (bg != null) {
-            Color panel = bg;
-            Color surface = adjust(bg, theme.dark() ? 12 : -6);
-            Color field = adjust(bg, theme.dark() ? 18 : -10);
-            Color text = theme == Theme.HIGH_CONTRAST ? Color.WHITE : (theme.dark() ? new Color(238, 240, 244) : new Color(36, 38, 42));
-            UIManager.put("Panel.background", panel);
-            UIManager.put("Viewport.background", panel);
-            UIManager.put("Label.foreground", text);
-            UIManager.put("Table.background", surface);
-            UIManager.put("Table.foreground", text);
-            UIManager.put("TextField.background", field);
-            UIManager.put("FormattedTextField.background", field);
-            UIManager.put("TextArea.background", field);
-            UIManager.put("ComboBox.background", field);
-        }
+        UIManager.put("Panel.background", p.background());
+        UIManager.put("Viewport.background", p.background());
+        UIManager.put("Label.foreground", p.text());
+        UIManager.put("Label.disabledForeground", p.mutedText());
+        UIManager.put("Component.foreground", p.text());
+        UIManager.put("Component.focusColor", p.accent());
+        UIManager.put("Component.accentColor", p.accent());
+        UIManager.put("Component.borderColor", p.border());
+
+        UIManager.put("Button.background", p.control());
+        UIManager.put("Button.foreground", contrastText(p.control()));
+        UIManager.put("Button.hoverBackground", p.controlHover());
+        UIManager.put("Button.pressedBackground", blend(p.controlHover(), p.accent(), 0.20));
+        UIManager.put("Button.default.background", p.accent());
+        UIManager.put("Button.default.foreground", contrastText(p.accent()));
+
+        UIManager.put("TextField.background", p.surfaceAlt());
+        UIManager.put("TextField.foreground", p.text());
+        UIManager.put("FormattedTextField.background", p.surfaceAlt());
+        UIManager.put("FormattedTextField.foreground", p.text());
+        UIManager.put("TextArea.background", p.surfaceAlt());
+        UIManager.put("TextArea.foreground", p.text());
+        UIManager.put("ComboBox.background", p.surfaceAlt());
+        UIManager.put("ComboBox.foreground", p.text());
+        UIManager.put("Spinner.background", p.surfaceAlt());
+
+        UIManager.put("Table.background", p.surface());
+        UIManager.put("Table.foreground", p.text());
+        UIManager.put("Table.selectionBackground", blend(p.surface(), p.accent(), 0.35));
+        UIManager.put("Table.selectionForeground", p.text());
+        UIManager.put("TableHeader.background", p.surfaceAlt());
+        UIManager.put("TableHeader.foreground", p.text());
+
+        UIManager.put("ProgressBar.background", p.surfaceAlt());
+        UIManager.put("ProgressBar.foreground", p.accent());
+        UIManager.put("Separator.foreground", p.border());
+        UIManager.put("TabbedPane.underlineColor", p.accent());
+        UIManager.put("CheckBox.icon.checkmarkColor", contrastText(p.accent()));
     }
 
-    public static Color backgroundFor(Theme theme) {
+    private static Palette paletteFor(Theme theme) {
         return switch (theme) {
-            case MIDNIGHT -> new Color(18, 25, 39);
-            case GRAPHITE -> new Color(42, 44, 48);
-            case OCEAN -> new Color(18, 45, 58);
-            case FOREST -> new Color(27, 48, 36);
-            case WARM_SAND -> new Color(239, 229, 208);
-            case SLATE_BLUE -> new Color(226, 231, 240);
-            case HIGH_CONTRAST -> new Color(5, 5, 5);
-            case HALLOWEEN -> new Color(35, 31, 38);
-            case THANKSGIVING -> new Color(242, 226, 198);
-            case CHRISTMAS -> new Color(23, 54, 43);
-            case NEW_YEAR -> new Color(20, 24, 38);
-            case VALENTINES -> new Color(249, 226, 232);
-            case ST_PATRICKS -> new Color(20, 55, 38);
-            case EASTER_SPRING -> new Color(241, 235, 248);
-            case MEMORIAL_DAY -> new Color(234, 239, 247);
-            case INDEPENDENCE_DAY -> new Color(20, 37, 68);
-            case LABOR_DAY -> new Color(235, 240, 248);
-            default -> null;
+            case SYSTEM -> paletteFor(systemTheme());
+            case LIGHT -> palette(false, "#F4F6F8", "#FFFFFF", "#EEF1F4", "#FFFFFF", "#E5E9EE", "#23272D", "#66707C", "#E7EBEF", "#DCE2E8", "#CCD3DA", theme.accent());
+            case DARK -> palette(true, "#1F2329", "#2A3037", "#343B44", "#303740", "#242A31", "#F1F4F7", "#AAB3BD", "#39414A", "#454E59", "#505A65", theme.accent());
+            case MIDNIGHT -> palette(true, "#101826", "#172235", "#1D2B42", "#1B2940", "#121C2B", "#F3F7FF", "#A8B7CE", "#22344E", "#2C4261", "#365170", theme.accent());
+            case GRAPHITE -> palette(true, "#25272B", "#31343A", "#3A3E45", "#353941", "#292C31", "#F2F3F5", "#B7BBC1", "#41454C", "#4B5058", "#5A6069", theme.accent());
+            case OCEAN -> palette(true, "#0E2632", "#153746", "#1D4658", "#1A4050", "#102C39", "#EFFBFF", "#A8C8D2", "#205062", "#286276", "#36768A", theme.accent());
+            case FOREST -> palette(true, "#13281D", "#1D382A", "#274835", "#244330", "#172F22", "#F0F8F2", "#A9C3B0", "#2C4F3A", "#376249", "#48745A", theme.accent());
+            case WARM_SAND -> palette(false, "#EEE4D2", "#FAF4E8", "#E6D8C1", "#F6EBD8", "#DED0B9", "#352B22", "#75685A", "#E2D2B9", "#D5C0A2", "#C8B08E", theme.accent());
+            case SLATE_BLUE -> palette(false, "#E6EAF2", "#F5F7FB", "#DCE2EC", "#EEF2F8", "#D5DCE8", "#252D3A", "#687486", "#D9E0EB", "#CBD4E2", "#BAC6D7", theme.accent());
+            case HIGH_CONTRAST -> palette(true, "#050505", "#111111", "#1B1B1B", "#151515", "#080808", "#FFFFFF", "#D9D9D9", "#222222", "#303030", "#FFFFFF", theme.accent());
+            case HALLOWEEN -> palette(true, "#1C1820", "#29232D", "#342B38", "#302735", "#211B25", "#FFF5E9", "#C7B7C9", "#3B303F", "#4A3A4F", "#624A68", theme.accent());
+            case THANKSGIVING -> palette(false, "#EFE0C8", "#FAF1E3", "#E7D2B4", "#F3E4CC", "#DEC8A8", "#3B281B", "#7D6858", "#E4C9A7", "#D6B98F", "#C9A77C", theme.accent());
+            case CHRISTMAS -> palette(true, "#102A20", "#1B3A2E", "#234838", "#204234", "#142F25", "#F7F3EA", "#B9C8BF", "#2C4B3B", "#365C48", "#47705A", theme.accent());
+            case NEW_YEAR -> palette(true, "#111521", "#1E2433", "#282F40", "#242B3B", "#151A27", "#FFFBEF", "#C8C0A9", "#343B4C", "#41495C", "#5A6273", theme.accent());
+            case VALENTINES -> palette(false, "#F8E3EA", "#FFF4F7", "#EFD4DE", "#F9E8EE", "#E7CBD5", "#492A35", "#87636E", "#EACFD8", "#DCBAC6", "#D1A8B6", theme.accent());
+            case ST_PATRICKS -> palette(true, "#0E2D1D", "#173D28", "#1F4C32", "#1D472F", "#123522", "#F2FFF5", "#A9CCB3", "#27563A", "#306A47", "#3F8057", theme.accent());
+            case EASTER_SPRING -> palette(false, "#F1ECF7", "#FCF9FF", "#E6DDF0", "#F5EFFA", "#DED4EA", "#332A3D", "#766986", "#E2D7ED", "#D6C8E4", "#C7B5D9", theme.accent());
+            case MEMORIAL_DAY -> palette(false, "#EAF0F8", "#F8FAFD", "#DDE6F1", "#F2F6FB", "#D4DFEC", "#222D3B", "#697789", "#D9E4F0", "#C8D7E7", "#B7CADF", theme.accent());
+            case INDEPENDENCE_DAY -> palette(true, "#101F3B", "#182B4C", "#21375D", "#1E3458", "#132541", "#F7FAFF", "#AFBDD3", "#2A3F63", "#345078", "#49638A", theme.accent());
+            case LABOR_DAY -> palette(false, "#E8EEF7", "#F7FAFD", "#DCE5F1", "#F0F5FA", "#D2DDEA", "#243044", "#68768A", "#D7E1ED", "#C7D5E4", "#B6C7DA", theme.accent());
         };
     }
 
+    private static Palette palette(boolean dark, String background, String surface, String surfaceAlt,
+                                   String calendarCell, String adjacentCell, String text, String muted,
+                                   String control, String hover, String border, Color accent) {
+        Palette p = new Palette(hex(background), hex(surface), hex(surfaceAlt), hex(calendarCell), hex(adjacentCell),
+                hex(text), hex(muted), hex(control), hex(hover), hex(border), accent);
+        return ensureReadable(p, dark);
+    }
+
+    private static Palette ensureReadable(Palette p, boolean dark) {
+        Color text = ensureContrast(p.text(), p.background(), 4.5, dark ? Color.WHITE : Color.BLACK);
+        Color muted = ensureContrast(p.mutedText(), p.background(), 3.0, dark ? Color.WHITE : Color.BLACK);
+        return new Palette(p.background(), p.surface(), p.surfaceAlt(), p.calendarCell(), p.adjacentCell(),
+                text, muted, p.control(), p.controlHover(), p.border(), p.accent());
+    }
+
+    public static Color backgroundFor(Theme theme) { return paletteFor(theme).background(); }
+    public static Color calendarCellColor() { return appliedPalette.calendarCell(); }
+    public static Color adjacentCalendarCellColor() { return appliedPalette.adjacentCell(); }
+    public static Color textColor() { return appliedPalette.text(); }
+    public static Color mutedTextColor() { return appliedPalette.mutedText(); }
+    public static Color surfaceColor() { return appliedPalette.surface(); }
+    public static Color surfaceAltColor() { return appliedPalette.surfaceAlt(); }
+
     public static Color contrastText(Color color) {
-        double lum = (0.299 * color.getRed() + 0.587 * color.getGreen() + 0.114 * color.getBlue());
-        return lum > 160 ? new Color(35, 35, 35) : Color.WHITE;
+        return contrastRatio(Color.WHITE, color) >= contrastRatio(new Color(25, 25, 25), color)
+                ? Color.WHITE : new Color(25, 25, 25);
     }
 
-    private static Color adjust(Color color, int delta) {
-        return new Color(clamp(color.getRed() + delta), clamp(color.getGreen() + delta), clamp(color.getBlue() + delta));
+    private static Color ensureContrast(Color foreground, Color background, double minimum, Color fallback) {
+        return contrastRatio(foreground, background) >= minimum ? foreground : fallback;
     }
 
-    private static int clamp(int value) { return Math.max(0, Math.min(255, value)); }
+    public static double contrastRatio(Color a, Color b) {
+        double l1 = relativeLuminance(a);
+        double l2 = relativeLuminance(b);
+        double lighter = Math.max(l1, l2);
+        double darker = Math.min(l1, l2);
+        return (lighter + 0.05) / (darker + 0.05);
+    }
+
+    private static double relativeLuminance(Color c) {
+        double r = channel(c.getRed() / 255.0);
+        double g = channel(c.getGreen() / 255.0);
+        double b = channel(c.getBlue() / 255.0);
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    }
+
+    private static double channel(double v) { return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
+
+    private static Color hex(String value) { return Color.decode(value); }
+
+    public static Color blend(Color a, Color b, double amount) {
+        amount = Math.max(0.0, Math.min(1.0, amount));
+        int r = (int) Math.round(a.getRed() * (1 - amount) + b.getRed() * amount);
+        int g = (int) Math.round(a.getGreen() * (1 - amount) + b.getGreen() * amount);
+        int bl = (int) Math.round(a.getBlue() * (1 - amount) + b.getBlue() * amount);
+        return new Color(r, g, bl);
+    }
 
     private static void refreshWindows() {
         for (Window window : Window.getWindows()) {
             SwingUtilities.updateComponentTreeUI(window);
+            applyThemeRoles(window);
             window.invalidate();
             window.validate();
             window.repaint();
+        }
+    }
+
+    public static void applyThemeRoles(Component component) {
+        if (component instanceof JComponent jc) {
+            Object role = jc.getClientProperty(ROLE);
+            if (ROLE_MUTED.equals(role)) {
+                jc.setForeground(appliedPalette.mutedText());
+            } else if (ROLE_SURFACE.equals(role)) {
+                jc.setOpaque(true);
+                jc.setBackground(appliedPalette.surface());
+                jc.setForeground(appliedPalette.text());
+            } else if (ROLE_SURFACE_ALT.equals(role)) {
+                jc.setOpaque(true);
+                jc.setBackground(appliedPalette.surfaceAlt());
+                jc.setForeground(appliedPalette.text());
+            } else if (ROLE_PRIMARY.equals(role)) {
+                jc.setBackground(appliedPalette.accent());
+                jc.setForeground(contrastText(appliedPalette.accent()));
+            }
+        }
+        if (component instanceof Container container) {
+            for (Component child : container.getComponents()) applyThemeRoles(child);
         }
     }
 }
