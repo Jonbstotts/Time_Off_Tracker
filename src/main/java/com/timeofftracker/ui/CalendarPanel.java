@@ -42,6 +42,10 @@ public class CalendarPanel extends JPanel {
         JButton next = new JButton("›");
         prev.putClientProperty("FlatLaf.style", "font: bold +8; arc: 12");
         next.putClientProperty("FlatLaf.style", "font: bold +8; arc: 12");
+        prev.setFocusable(false);
+        next.setFocusable(false);
+        prev.setFocusPainted(false);
+        next.setFocusPainted(false);
         prev.addActionListener(e -> setVisibleMonth(visibleMonth.minusMonths(1)));
         next.addActionListener(e -> setVisibleMonth(visibleMonth.plusMonths(1)));
 
@@ -134,6 +138,33 @@ public class CalendarPanel extends JPanel {
         return visibleMonth;
     }
 
+    private Color calendarBaseColor() {
+        Color themed = ThemeManager.backgroundFor(ThemeManager.appliedTheme());
+        if (themed != null) return themed;
+        Color panel = UIManager.getColor("Panel.background");
+        return panel != null ? panel : new Color(245, 245, 245);
+    }
+
+    private Color currentMonthCellColor() {
+        Color base = calendarBaseColor();
+        boolean dark = ThemeManager.appliedTheme().dark();
+        return blend(base, dark ? Color.WHITE : Color.BLACK, dark ? 0.09 : 0.035);
+    }
+
+    private Color adjacentMonthCellColor() {
+        Color base = calendarBaseColor();
+        boolean dark = ThemeManager.appliedTheme().dark();
+        return blend(base, dark ? Color.BLACK : Color.WHITE, dark ? 0.04 : 0.35);
+    }
+
+    private static Color blend(Color a, Color b, double amount) {
+        amount = Math.max(0.0, Math.min(1.0, amount));
+        int r = (int) Math.round(a.getRed() * (1 - amount) + b.getRed() * amount);
+        int g = (int) Math.round(a.getGreen() * (1 - amount) + b.getGreen() * amount);
+        int bl = (int) Math.round(a.getBlue() * (1 - amount) + b.getBlue() * amount);
+        return new Color(r, g, bl);
+    }
+
     private class DayCell extends JButton {
         private final LocalDate date;
 
@@ -143,7 +174,10 @@ public class CalendarPanel extends JPanel {
             setVerticalAlignment(SwingConstants.TOP);
             setMargin(new Insets(9, 10, 9, 10));
             setFocusPainted(false);
+            setFocusable(false);
             setOpaque(true);
+            setContentAreaFilled(true);
+            setBorderPainted(false);
             setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             setPreferredSize(new Dimension(110, 86));
             setMinimumSize(new Dimension(95, 80));
@@ -164,19 +198,23 @@ public class CalendarPanel extends JPanel {
 
             if (!inMonth) {
                 setEnabled(false);
+                setBackground(adjacentMonthCellColor());
                 setForeground(new Color(145, 145, 145));
-                putClientProperty("FlatLaf.style", "arc: 14; background: darken(@background,2%); borderWidth: 0");
+                putClientProperty("FlatLaf.style", "arc: 14; borderWidth: 0");
             } else if (entry != null) {
                 setForeground(AppTheme.textColorFor(entry.type()));
                 setBackground(AppTheme.colorFor(entry.type()));
                 putClientProperty("FlatLaf.style", "arc: 14; borderWidth: 0");
                 setToolTipText(buildTooltip(entry));
             } else if (date.equals(LocalDate.now())) {
+                setBackground(currentMonthCellColor());
                 setForeground(AppTheme.TODAY);
+                setBorderPainted(true);
                 putClientProperty("FlatLaf.style", "arc: 14; borderWidth: 2; borderColor: #59a14f");
                 setToolTipText("Today");
             } else {
-                putClientProperty("FlatLaf.style", "arc: 14; borderWidth: 0; background: lighten(@background,2%)");
+                setBackground(currentMonthCellColor());
+                putClientProperty("FlatLaf.style", "arc: 14; borderWidth: 0");
             }
 
             addActionListener(e -> dateClickHandler.accept(this.date));
