@@ -51,18 +51,18 @@ public class MainPanel extends JPanel {
         JPanel controls = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         controls.setOpaque(false);
 
+        configureHeaderButton(appearance);
         updateAppearanceButton();
-        appearance.putClientProperty("FlatLaf.style", "arc: 12; margin: 7,14,7,14");
         appearance.addActionListener(e -> openAppearance());
         controls.add(appearance);
 
         JButton importSchedule = new JButton("Import Annual Schedule");
-        importSchedule.putClientProperty("FlatLaf.style", "arc: 12; margin: 7,14,7,14");
+        configureHeaderButton(importSchedule);
         importSchedule.addActionListener(e -> openScheduleImport());
         controls.add(importSchedule);
 
         JButton settings = new JButton("Settings");
-        settings.putClientProperty("FlatLaf.style", "arc: 12; margin: 7,14,7,14");
+        configureHeaderButton(settings);
         settings.addActionListener(e -> openSettings());
         controls.add(settings);
         header.add(controls, BorderLayout.EAST);
@@ -70,6 +70,12 @@ public class MainPanel extends JPanel {
         top.add(header, BorderLayout.NORTH);
         top.add(balancePanel, BorderLayout.CENTER);
         return top;
+    }
+
+    private void configureHeaderButton(AbstractButton button) {
+        button.putClientProperty("FlatLaf.style", "arc: 12; margin: 7,14,7,14");
+        button.setFocusable(false);
+        button.setFocusPainted(false);
     }
 
     private void openAppearance() {
