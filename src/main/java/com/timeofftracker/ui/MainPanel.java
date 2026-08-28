@@ -14,7 +14,7 @@ public class MainPanel extends JPanel {
     private final TimeOffService service;
     private final BalancePanel balancePanel = new BalancePanel();
     private final CalendarPanel calendarPanel;
-    private final JLabel yearInfo = new JLabel();
+    private final JLabel yearInfo = AppTheme.muted(new JLabel());
     private final JButton appearance = new JButton();
 
     public MainPanel(Window owner, TimeOffService service) {
@@ -43,7 +43,6 @@ public class MainPanel extends JPanel {
         titleBox.setOpaque(false);
         titleBox.setLayout(new BoxLayout(titleBox, BoxLayout.Y_AXIS));
         titleBox.add(AppTheme.title("Time Off Tracker"));
-        yearInfo.setForeground(AppTheme.MUTED);
         titleBox.add(Box.createVerticalStrut(3));
         titleBox.add(yearInfo);
         header.add(titleBox, BorderLayout.WEST);
@@ -85,6 +84,7 @@ public class MainPanel extends JPanel {
             updateAppearanceButton();
             calendarPanel.refresh();
             refreshSummary();
+            ThemeManager.applyThemeRoles(this);
         }
     }
 
@@ -154,6 +154,7 @@ public class MainPanel extends JPanel {
     public void refreshAll() {
         calendarPanel.refresh();
         refreshSummary();
+        ThemeManager.applyThemeRoles(this);
     }
 
     private void refreshSummary() {
