@@ -1,7 +1,6 @@
 package com.timeofftracker.ui;
 
 import com.timeofftracker.model.TimeOffEntry;
-import com.timeofftracker.model.TimeOffType;
 import com.timeofftracker.service.TimeOffService;
 
 import javax.swing.*;
@@ -70,8 +69,8 @@ public class CalendarPanel extends JPanel {
         weekdayRow.setOpaque(false);
         for (DayOfWeek dow : List.of(DayOfWeek.SUNDAY, DayOfWeek.MONDAY, DayOfWeek.TUESDAY,
                 DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY, DayOfWeek.SATURDAY)) {
-            JLabel l = new JLabel(dow.getDisplayName(TextStyle.SHORT, Locale.getDefault()).toUpperCase(), SwingConstants.CENTER);
-            l.setForeground(AppTheme.MUTED);
+            JLabel l = AppTheme.muted(new JLabel(
+                    dow.getDisplayName(TextStyle.SHORT, Locale.getDefault()).toUpperCase(), SwingConstants.CENTER));
             l.putClientProperty("FlatLaf.style", "font: bold -1");
             weekdayRow.add(l);
         }
@@ -100,8 +99,7 @@ public class CalendarPanel extends JPanel {
         item.setOpaque(false);
         JLabel dot = new JLabel("●");
         dot.setForeground(color);
-        JLabel label = new JLabel(text);
-        label.setForeground(AppTheme.MUTED);
+        JLabel label = AppTheme.muted(new JLabel(text));
         label.putClientProperty("FlatLaf.style", "font: -1");
         item.add(dot);
         item.add(label);
@@ -124,6 +122,7 @@ public class CalendarPanel extends JPanel {
             grid.add(new DayCell(cellDate, visibleMonth, entry));
             cellDate = cellDate.plusDays(1);
         }
+        ThemeManager.applyThemeRoles(this);
         revalidate();
         repaint();
     }
@@ -136,33 +135,6 @@ public class CalendarPanel extends JPanel {
 
     public YearMonth getVisibleMonth() {
         return visibleMonth;
-    }
-
-    private Color calendarBaseColor() {
-        Color themed = ThemeManager.backgroundFor(ThemeManager.appliedTheme());
-        if (themed != null) return themed;
-        Color panel = UIManager.getColor("Panel.background");
-        return panel != null ? panel : new Color(245, 245, 245);
-    }
-
-    private Color currentMonthCellColor() {
-        Color base = calendarBaseColor();
-        boolean dark = ThemeManager.appliedTheme().dark();
-        return blend(base, dark ? Color.WHITE : Color.BLACK, dark ? 0.09 : 0.035);
-    }
-
-    private Color adjacentMonthCellColor() {
-        Color base = calendarBaseColor();
-        boolean dark = ThemeManager.appliedTheme().dark();
-        return blend(base, dark ? Color.BLACK : Color.WHITE, dark ? 0.04 : 0.35);
-    }
-
-    private static Color blend(Color a, Color b, double amount) {
-        amount = Math.max(0.0, Math.min(1.0, amount));
-        int r = (int) Math.round(a.getRed() * (1 - amount) + b.getRed() * amount);
-        int g = (int) Math.round(a.getGreen() * (1 - amount) + b.getGreen() * amount);
-        int bl = (int) Math.round(a.getBlue() * (1 - amount) + b.getBlue() * amount);
-        return new Color(r, g, bl);
     }
 
     private class DayCell extends JButton {
@@ -198,8 +170,8 @@ public class CalendarPanel extends JPanel {
 
             if (!inMonth) {
                 setEnabled(false);
-                setBackground(adjacentMonthCellColor());
-                setForeground(new Color(145, 145, 145));
+                setBackground(ThemeManager.adjacentCalendarCellColor());
+                setForeground(ThemeManager.mutedTextColor());
                 putClientProperty("FlatLaf.style", "arc: 14; borderWidth: 0");
             } else if (entry != null) {
                 setForeground(AppTheme.textColorFor(entry.type()));
@@ -207,13 +179,14 @@ public class CalendarPanel extends JPanel {
                 putClientProperty("FlatLaf.style", "arc: 14; borderWidth: 0");
                 setToolTipText(buildTooltip(entry));
             } else if (date.equals(LocalDate.now())) {
-                setBackground(currentMonthCellColor());
+                setBackground(ThemeManager.calendarCellColor());
                 setForeground(AppTheme.TODAY);
                 setBorderPainted(true);
                 putClientProperty("FlatLaf.style", "arc: 14; borderWidth: 2; borderColor: #59a14f");
                 setToolTipText("Today");
             } else {
-                setBackground(currentMonthCellColor());
+                setBackground(ThemeManager.calendarCellColor());
+                setForeground(ThemeManager.textColor());
                 putClientProperty("FlatLaf.style", "arc: 14; borderWidth: 0");
             }
 
