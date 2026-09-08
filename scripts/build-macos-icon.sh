@@ -7,18 +7,24 @@ BUILD_DIR="$ROOT/build/macos-icon"
 SOURCE_PNG="$BUILD_DIR/time-off-tracker-icon-1024.png"
 ICONSET="$BUILD_DIR/TimeOffTracker.iconset"
 ICNS="$BUILD_DIR/TimeOffTracker.icns"
+DECODER="$ROOT/scripts/DecodeBase64.java"
 
 if [[ ! -f "$ASSET" ]]; then
   echo "Missing icon asset: $ASSET" >&2
   exit 1
 fi
 
+if [[ ! -f "$DECODER" ]]; then
+  echo "Missing icon decoder: $DECODER" >&2
+  exit 1
+fi
+
 rm -rf "$BUILD_DIR"
 mkdir -p "$ICONSET"
 
-# macOS /usr/bin/base64 expects input/output paths through -i/-o.
-# Using a positional input path prints the usage text and aborts the build.
-/usr/bin/base64 -D -i "$ASSET" -o "$SOURCE_PNG"
+# Decode with the same Java runtime required by the project. This intentionally
+# avoids macOS/Linux base64 command differences.
+java "$DECODER" "$ASSET" "$SOURCE_PNG"
 
 if [[ ! -s "$SOURCE_PNG" ]]; then
   echo "Failed to decode macOS app icon source image." >&2
