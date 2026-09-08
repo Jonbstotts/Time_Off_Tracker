@@ -26,9 +26,12 @@ public class BalancePanel extends JPanel {
     }
 
     public void updateSummary(BalanceSummary s) {
-        vacation.setValues(s.vacationAllowance(), s.vacationUsed(), s.vacationScheduled(), s.vacationRemaining(), s.vacationEntryCount());
-        eto.setValues(s.etoAllowance(), s.etoUsed(), s.etoScheduled(), s.etoRemaining(), s.etoEntryCount());
-        totalLabel.setText(String.format("Recorded days: %d Vacation  •  %d ETO", s.vacationEntryCount(), s.etoEntryCount()));
+        vacation.setValues(s.vacationAllowance(), s.vacationUsed(), s.vacationScheduled(),
+                s.vacationRemaining(), s.vacationEntryCount());
+        eto.setValues(s.etoAllowance(), s.etoUsed(), s.etoScheduled(),
+                s.etoRemaining(), s.etoEntryCount());
+        totalLabel.setText(String.format("Recorded days: %d Vacation  •  %d ETO",
+                s.vacationEntryCount(), s.etoEntryCount()));
     }
 
     private static class MetricCard extends JPanel {
@@ -36,11 +39,12 @@ public class BalancePanel extends JPanel {
         private final JLabel remaining = new JLabel();
         private final JLabel detail = AppTheme.muted(new JLabel());
         private final JProgressBar progress = new JProgressBar(0, 1000);
-        private final Color categoryAccent;
+        private Color categoryAccent;
 
         MetricCard(String title, Color accent) {
             super(new BorderLayout(8, 8));
             this.categoryAccent = accent;
+
             name.setText(title.toUpperCase());
             name.setForeground(accent);
             name.putClientProperty("FlatLaf.style", "font: bold +1");
@@ -62,27 +66,29 @@ public class BalancePanel extends JPanel {
 
             add(text, BorderLayout.CENTER);
             add(progress, BorderLayout.SOUTH);
-            putClientProperty("FlatLaf.style", "arc: 18; borderWidth: 0");
-            putClientProperty(ThemeManager.ROLE, ThemeManager.ROLE_SURFACE);
             setOpaque(true);
-            setBackground(ThemeManager.surfaceColor());
-            setForeground(ThemeManager.textColor());
+            setBackground(AppTheme.surfaceColor());
             setBorder(BorderFactory.createEmptyBorder(15, 17, 14, 17));
         }
 
         @Override
         public void updateUI() {
             super.updateUI();
-            if (categoryAccent != null) progress.setForeground(categoryAccent);
-            setBackground(ThemeManager.surfaceColor());
-            setForeground(ThemeManager.textColor());
+            setBackground(AppTheme.surfaceColor());
+            if (progress != null && categoryAccent != null) {
+                progress.setForeground(categoryAccent);
+            }
         }
 
-        void setValues(double allowance, double used, double scheduled, double remainingHours, long count) {
+        void setValues(double allowance, double used, double scheduled,
+                       double remainingHours, long count) {
             remaining.setText(String.format("%.1f hrs remaining", remainingHours));
-            detail.setText(String.format("%.1f used  •  %.1f scheduled  •  %.1f allotted", used, scheduled, allowance));
+            detail.setText(String.format("%.1f used  •  %.1f scheduled  •  %.1f allotted",
+                    used, scheduled, allowance));
             double consumed = used + scheduled;
-            int value = allowance <= 0 ? 0 : (int) Math.round(Math.min(1.0, consumed / allowance) * 1000);
+            int value = allowance <= 0
+                    ? 0
+                    : (int) Math.round(Math.min(1.0, consumed / allowance) * 1000);
             progress.setValue(value);
             remaining.setToolTipText(count + " recorded day(s)");
         }
