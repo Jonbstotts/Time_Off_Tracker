@@ -12,6 +12,13 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.prefs.Preferences;
 
+/**
+ * Owns theme selection and persistence only.
+ *
+ * FlatLaf owns component colors, borders, disabled states, hover states and
+ * other look-and-feel details. This class intentionally does not install
+ * application-wide UIManager color overrides or maintain a second palette.
+ */
 public final class ThemeManager {
     public enum Theme {
         SYSTEM("Follow System", null, false, "Uses the current macOS/desktop light or dark preference."),
@@ -63,20 +70,6 @@ public final class ThemeManager {
         @Override public String toString() { return displayName; }
     }
 
-    public record Palette(
-            Color background,
-            Color surface,
-            Color surfaceAlt,
-            Color calendarCell,
-            Color adjacentCell,
-            Color text,
-            Color mutedText,
-            Color control,
-            Color controlHover,
-            Color border,
-            Color accent
-    ) {}
-
     public enum SeasonalEvent {
         NEW_YEAR("New Year", Theme.COBALT_2),
         VALENTINES("Valentine's Day", Theme.DARK_PURPLE),
@@ -96,18 +89,11 @@ public final class ThemeManager {
         public Theme theme() { return theme; }
     }
 
-    public static final String ROLE = "timeoff.themeRole";
-    public static final String ROLE_MUTED = "muted";
-    public static final String ROLE_SURFACE = "surface";
-    public static final String ROLE_SURFACE_ALT = "surfaceAlt";
-    public static final String ROLE_PRIMARY = "primary";
-
     private static final Preferences PREFS = Preferences.userNodeForPackage(ThemeManager.class);
-    private static final String KEY_THEME = "theme.v3.flatlaf";
+    private static final String KEY_THEME = "theme.v4.nativeFlatLaf";
     private static final String KEY_AUTO = "automaticSeasonalThemes";
     private static final String EVENT_PREFIX = "seasonal.";
     private static Theme appliedTheme = Theme.FLAT_LIGHT;
-    private static Palette appliedPalette = fallbackPalette(false);
 
     private ThemeManager() {}
 
@@ -117,6 +103,13 @@ public final class ThemeManager {
             try { return Theme.valueOf(stored); }
             catch (IllegalArgumentException ignored) {}
         }
+
+        String previousFlatLaf = PREFS.get("theme.v3.flatlaf", null);
+        if (previousFlatLaf != null) {
+            try { return Theme.valueOf(previousFlatLaf); }
+            catch (IllegalArgumentException ignored) {}
+        }
+
         String legacy = PREFS.get("theme.v2", PREFS.get("theme", "LIGHT"));
         return migrateLegacyTheme(legacy);
     }
@@ -140,8 +133,13 @@ public final class ThemeManager {
         };
     }
 
-    public static boolean automaticSeasonalThemes() { return PREFS.getBoolean(KEY_AUTO, false); }
-    public static boolean isEventEnabled(SeasonalEvent event) { return PREFS.getBoolean(EVENT_PREFIX + event.name(), true); }
+    public static boolean automaticSeasonalThemes() {
+        return PREFS.getBoolean(KEY_AUTO, false);
+    }
+
+    public static boolean isEventEnabled(SeasonalEvent event) {
+        return PREFS.getBoolean(EVENT_PREFIX + event.name(), true);
+    }
 
     public static Map<SeasonalEvent, Boolean> eventSettings() {
         Map<SeasonalEvent, Boolean> result = new EnumMap<>(SeasonalEvent.class);
@@ -150,7 +148,8 @@ public final class ThemeManager {
     }
 
     public static void saveAppearance(Theme theme, boolean automatic, Map<SeasonalEvent, Boolean> enabledEvents) {
-        PREFS.put(KEY_THEME, theme.name());
+        Theme saved = theme == null ? Theme.FLAT_LIGHT : theme;
+        PREFS.put(KEY_THEME, saved.name());
         PREFS.putBoolean(KEY_AUTO, automatic);
         for (SeasonalEvent event : SeasonalEvent.values()) {
             PREFS.putBoolean(EVENT_PREFIX + event.name(), enabledEvents.getOrDefault(event, true));
@@ -158,27 +157,42 @@ public final class ThemeManager {
         applySavedTheme();
     }
 
-    public static void applySavedTheme() { applyTheme(resolveEffectiveTheme(LocalDate.now()), false); }
+    public static void applySavedTheme() {
+        applyTheme(resolveEffectiveTheme(LocalDate.now()), false);
+    }
 
+    /**
+     * Installs the selected FlatLaf class and asks Swing to recreate the UI
+     * delegates of all open windows. No colors are copied or overridden.
+     */
     public static void applyTheme(Theme theme, boolean persist) {
-        Theme actual = theme == Theme.SYSTEM ? systemTheme() : theme;
+        Theme requested = theme == null ? Theme.FLAT_LIGHT : theme;
+        Theme actual = requested == Theme.SYSTEM ? systemTheme() : requested;
+
         try {
             UIManager.setLookAndFeel(actual.lafClassName());
         } catch (Exception ex) {
+            System.err.println("Unable to load theme '" + actual.displayName() + "': " + ex.getMessage());
             FlatLightLaf.setup();
             actual = Theme.FLAT_LIGHT;
         }
+
         appliedTheme = actual;
-        installGeometryDefaults();
-        appliedPalette = derivePalette(actual.dark());
-        if (persist) PREFS.put(KEY_THEME, theme.name());
-        refreshWindows();
+        if (persist) PREFS.put(KEY_THEME, requested.name());
+        updateOpenWindows();
     }
 
-    public static Theme effectiveThemeToday() { return resolveEffectiveTheme(LocalDate.now()); }
-    public static Theme appliedTheme() { return appliedTheme; }
-    public static Palette palette() { return appliedPalette; }
-    public static boolean isDark() { return appliedTheme.dark(); }
+    public static Theme effectiveThemeToday() {
+        return resolveEffectiveTheme(LocalDate.now());
+    }
+
+    public static Theme appliedTheme() {
+        return appliedTheme;
+    }
+
+    public static boolean isDark() {
+        return appliedTheme.dark();
+    }
 
     private static Theme resolveEffectiveTheme(LocalDate date) {
         if (automaticSeasonalThemes()) {
@@ -229,68 +243,31 @@ public final class ThemeManager {
     private static Theme systemTheme() {
         String appearance = System.getProperty("apple.awt.application.appearance", "");
         Object desktopAppearance = null;
-        try { desktopAppearance = Toolkit.getDefaultToolkit().getDesktopProperty("apple.awt.application.appearance"); }
-        catch (HeadlessException ignored) {}
+        try {
+            desktopAppearance = Toolkit.getDefaultToolkit().getDesktopProperty("apple.awt.application.appearance");
+        } catch (HeadlessException ignored) {}
+
         String combined = appearance + " " + String.valueOf(desktopAppearance);
         return combined.toLowerCase().contains("dark") ? Theme.MAC_DARK : Theme.MAC_LIGHT;
     }
 
-    private static void installGeometryDefaults() {
-        UIManager.put("Component.arc", 12);
-        UIManager.put("Button.arc", 12);
-        UIManager.put("TextComponent.arc", 10);
-        UIManager.put("ScrollBar.width", 12);
+    private static void updateOpenWindows() {
+        for (Window window : Window.getWindows()) {
+            SwingUtilities.updateComponentTreeUI(window);
+            window.invalidate();
+            window.validate();
+            window.repaint();
+        }
     }
 
-    private static Palette derivePalette(boolean dark) {
-        Color background = color("Panel.background", dark ? new Color(43, 45, 48) : new Color(242, 242, 242));
-        Color text = color("Label.foreground", dark ? new Color(235, 235, 235) : new Color(35, 35, 35));
-        Color muted = color("Label.disabledForeground", blend(text, background, 0.45));
-        Color control = color("Button.background", blend(background, dark ? Color.WHITE : Color.BLACK, 0.08));
-        Color hover = color("Button.hoverBackground", blend(control, dark ? Color.WHITE : Color.BLACK, 0.08));
-        Color border = color("Component.borderColor", blend(background, text, 0.20));
-        Color accent = color("Component.accentColor", color("Component.focusColor", color("ProgressBar.foreground", new Color(78, 121, 167))));
-        Color textField = color("TextField.background", blend(background, dark ? Color.WHITE : Color.BLACK, 0.06));
-
-        Color surface = blend(background, dark ? Color.WHITE : Color.BLACK, dark ? 0.055 : 0.035);
-        Color calendar = blend(background, dark ? Color.WHITE : Color.BLACK, dark ? 0.095 : 0.065);
-        Color adjacent = background;
-
-        return new Palette(background, surface, textField, calendar, adjacent, text, muted, control, hover, border, accent);
-    }
-
-    private static Palette fallbackPalette(boolean dark) {
-        Color bg = dark ? new Color(43, 45, 48) : new Color(242, 242, 242);
-        Color text = dark ? new Color(235, 235, 235) : new Color(35, 35, 35);
-        return new Palette(bg, blend(bg, dark ? Color.WHITE : Color.BLACK, 0.06),
-                blend(bg, dark ? Color.WHITE : Color.BLACK, 0.10),
-                blend(bg, dark ? Color.WHITE : Color.BLACK, 0.09), bg, text,
-                blend(text, bg, 0.45), blend(bg, text, 0.10), blend(bg, text, 0.16),
-                blend(bg, text, 0.20), new Color(78, 121, 167));
-    }
-
-    private static Color color(String key, Color fallback) {
-        Color value = UIManager.getColor(key);
-        return value != null ? value : fallback;
-    }
-
-    public static Color backgroundFor(Theme theme) {
-        if (theme == appliedTheme || (theme == Theme.SYSTEM && appliedTheme == systemTheme())) return appliedPalette.background();
-        return theme.dark() ? new Color(43, 45, 48) : new Color(242, 242, 242);
-    }
-    public static Color calendarCellColor() { return appliedPalette.calendarCell(); }
-    public static Color adjacentCalendarCellColor() { return appliedPalette.adjacentCell(); }
-    public static Color textColor() { return appliedPalette.text(); }
-    public static Color mutedTextColor() { return appliedPalette.mutedText(); }
-    public static Color surfaceColor() { return appliedPalette.surface(); }
-    public static Color surfaceAltColor() { return appliedPalette.surfaceAlt(); }
-
+    /** Used only for semantic calendar colors, not for theming controls. */
     public static Color contrastText(Color color) {
-        return contrastRatio(Color.WHITE, color) >= contrastRatio(new Color(25, 25, 25), color)
-                ? Color.WHITE : new Color(25, 25, 25);
+        double white = contrastRatio(Color.WHITE, color);
+        Color black = new Color(25, 25, 25);
+        return white >= contrastRatio(black, color) ? Color.WHITE : black;
     }
 
-    public static double contrastRatio(Color a, Color b) {
+    private static double contrastRatio(Color a, Color b) {
         double l1 = relativeLuminance(a);
         double l2 = relativeLuminance(b);
         double lighter = Math.max(l1, l2);
@@ -305,46 +282,7 @@ public final class ThemeManager {
         return 0.2126 * r + 0.7152 * g + 0.0722 * b;
     }
 
-    private static double channel(double v) { return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
-
-    public static Color blend(Color a, Color b, double amount) {
-        amount = Math.max(0.0, Math.min(1.0, amount));
-        int r = (int) Math.round(a.getRed() * (1 - amount) + b.getRed() * amount);
-        int g = (int) Math.round(a.getGreen() * (1 - amount) + b.getGreen() * amount);
-        int bl = (int) Math.round(a.getBlue() * (1 - amount) + b.getBlue() * amount);
-        return new Color(r, g, bl);
-    }
-
-    private static void refreshWindows() {
-        for (Window window : Window.getWindows()) {
-            SwingUtilities.updateComponentTreeUI(window);
-            applyThemeRoles(window);
-            window.invalidate();
-            window.validate();
-            window.repaint();
-        }
-    }
-
-    public static void applyThemeRoles(Component component) {
-        if (component instanceof JComponent jc) {
-            Object role = jc.getClientProperty(ROLE);
-            if (ROLE_MUTED.equals(role)) {
-                jc.setForeground(appliedPalette.mutedText());
-            } else if (ROLE_SURFACE.equals(role)) {
-                jc.setOpaque(true);
-                jc.setBackground(appliedPalette.surface());
-                jc.setForeground(appliedPalette.text());
-            } else if (ROLE_SURFACE_ALT.equals(role)) {
-                jc.setOpaque(true);
-                jc.setBackground(appliedPalette.surfaceAlt());
-                jc.setForeground(appliedPalette.text());
-            } else if (ROLE_PRIMARY.equals(role)) {
-                jc.setBackground(appliedPalette.accent());
-                jc.setForeground(contrastText(appliedPalette.accent()));
-            }
-        }
-        if (component instanceof Container container) {
-            for (Component child : container.getComponents()) applyThemeRoles(child);
-        }
+    private static double channel(double value) {
+        return value <= 0.03928 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
     }
 }
