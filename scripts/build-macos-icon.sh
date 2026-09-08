@@ -16,7 +16,14 @@ fi
 rm -rf "$BUILD_DIR"
 mkdir -p "$ICONSET"
 
-/usr/bin/base64 -D "$ASSET" > "$SOURCE_PNG"
+# macOS /usr/bin/base64 expects input/output paths through -i/-o.
+# Using a positional input path prints the usage text and aborts the build.
+/usr/bin/base64 -D -i "$ASSET" -o "$SOURCE_PNG"
+
+if [[ ! -s "$SOURCE_PNG" ]]; then
+  echo "Failed to decode macOS app icon source image." >&2
+  exit 1
+fi
 
 make_icon() {
   local size="$1"
@@ -36,5 +43,10 @@ make_icon 512  icon_512x512.png
 make_icon 1024 icon_512x512@2x.png
 
 /usr/bin/iconutil -c icns "$ICONSET" -o "$ICNS"
+
+if [[ ! -s "$ICNS" ]]; then
+  echo "Failed to create macOS .icns application icon." >&2
+  exit 1
+fi
 
 echo "$ICNS"
