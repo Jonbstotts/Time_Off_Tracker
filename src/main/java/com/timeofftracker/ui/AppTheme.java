@@ -4,6 +4,13 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 
+/**
+ * Application-specific presentation helpers.
+ *
+ * This class does not theme Swing controls. FlatLaf owns the look and feel.
+ * The only fixed colors here are semantic calendar categories whose meaning
+ * must remain stable across themes.
+ */
 public final class AppTheme {
     private AppTheme() {}
 
@@ -28,41 +35,59 @@ public final class AppTheme {
         return ThemeManager.contrastText(colorFor(type));
     }
 
+    /**
+     * Returns a card that derives its surface color from the active FlatLaf
+     * theme whenever Swing updates the component UI.
+     */
     public static JPanel card(LayoutManager layout) {
-        JPanel p = new JPanel(layout);
-        p.putClientProperty("FlatLaf.style", "arc: 18; borderWidth: 0");
-        p.putClientProperty(ThemeManager.ROLE, ThemeManager.ROLE_SURFACE);
-        p.setBackground(ThemeManager.surfaceColor());
-        p.setForeground(ThemeManager.textColor());
-        p.setOpaque(true);
-        p.setBorder(new EmptyBorder(16, 18, 16, 18));
-        return p;
+        return new SurfacePanel(layout);
+    }
+
+    public static Color surfaceColor() {
+        Color surface = UIManager.getColor("TextField.background");
+        if (surface == null) surface = UIManager.getColor("Panel.background");
+        return surface != null ? surface : new Color(242, 242, 242);
     }
 
     public static JLabel title(String text) {
-        JLabel l = new JLabel(text);
-        l.putClientProperty("FlatLaf.style", "font: bold +12");
-        return l;
+        JLabel label = new JLabel(text);
+        label.putClientProperty("FlatLaf.style", "font: bold +12");
+        return label;
     }
 
     public static JLabel sectionTitle(String text) {
-        JLabel l = new JLabel(text);
-        l.putClientProperty("FlatLaf.style", "font: bold +4");
-        return l;
+        JLabel label = new JLabel(text);
+        label.putClientProperty("FlatLaf.style", "font: bold +4");
+        return label;
     }
 
+    /**
+     * Uses Swing's disabled-label rendering so the active look and feel owns
+     * the muted foreground color and updates it automatically on theme change.
+     */
     public static <T extends JComponent> T muted(T component) {
-        component.putClientProperty(ThemeManager.ROLE, ThemeManager.ROLE_MUTED);
-        component.setForeground(ThemeManager.mutedTextColor());
+        component.setEnabled(false);
         return component;
     }
 
+    /** Standard FlatLaf button with only typography/spacing customized. */
     public static JButton primaryButton(String text) {
-        JButton b = new JButton(text);
-        b.putClientProperty("FlatLaf.style", "arc: 12; font: bold; margin: 8,16,8,16");
-        b.putClientProperty(ThemeManager.ROLE, ThemeManager.ROLE_PRIMARY);
-        b.setBackground(ThemeManager.palette().accent());
-        b.setForeground(ThemeManager.contrastText(ThemeManager.palette().accent()));
-        return b;
+        JButton button = new JButton(text);
+        button.putClientProperty("FlatLaf.style", "font: bold; margin: 8,16,8,16");
+        return button;
+    }
+
+    private static final class SurfacePanel extends JPanel {
+        SurfacePanel(LayoutManager layout) {
+            super(layout);
+            setOpaque(true);
+            setBorder(new EmptyBorder(16, 18, 16, 18));
+        }
+
+        @Override
+        public void updateUI() {
+            super.updateUI();
+            setBackground(surfaceColor());
+        }
     }
 }
