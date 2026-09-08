@@ -72,7 +72,7 @@ public class MainPanel extends JPanel {
     }
 
     private void configureHeaderButton(AbstractButton button) {
-        button.putClientProperty("FlatLaf.style", "arc: 12; margin: 7,14,7,14");
+        button.putClientProperty("FlatLaf.style", "margin: 7,14,7,14");
         button.setFocusable(false);
         button.setFocusPainted(false);
     }
@@ -84,7 +84,6 @@ public class MainPanel extends JPanel {
             updateAppearanceButton();
             calendarPanel.refresh();
             refreshSummary();
-            ThemeManager.applyThemeRoles(this);
         }
     }
 
@@ -154,7 +153,6 @@ public class MainPanel extends JPanel {
     public void refreshAll() {
         calendarPanel.refresh();
         refreshSummary();
-        ThemeManager.applyThemeRoles(this);
     }
 
     private void refreshSummary() {
