@@ -20,5 +20,10 @@ jobs:
           java-version: '21'
           cache: maven
 
+      - name: Validate bundled app icon asset
+        run: |
+          java scripts/DecodeBase64.java assets/time-off-tracker-icon.png.b64 /tmp/time-off-tracker-icon.png
+          test -s /tmp/time-off-tracker-icon.png
+
       - name: Build and run tests
         run: mvn -B clean verify
