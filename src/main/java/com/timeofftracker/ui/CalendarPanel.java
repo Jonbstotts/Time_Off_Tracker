@@ -69,12 +69,13 @@ public class CalendarPanel extends JPanel {
         weekdayRow.setOpaque(false);
         for (DayOfWeek dow : List.of(DayOfWeek.SUNDAY, DayOfWeek.MONDAY, DayOfWeek.TUESDAY,
                 DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY, DayOfWeek.SATURDAY)) {
-            JLabel l = AppTheme.muted(new JLabel(
+            JLabel label = AppTheme.muted(new JLabel(
                     dow.getDisplayName(TextStyle.SHORT, Locale.getDefault()).toUpperCase(), SwingConstants.CENTER));
-            l.putClientProperty("FlatLaf.style", "font: bold -1");
-            weekdayRow.add(l);
+            label.putClientProperty("FlatLaf.style", "font: bold -1");
+            weekdayRow.add(label);
         }
         body.add(weekdayRow, BorderLayout.NORTH);
+
         grid.setOpaque(false);
         grid.setPreferredSize(new Dimension(840, 540));
         grid.setMinimumSize(new Dimension(700, 480));
@@ -111,7 +112,9 @@ public class CalendarPanel extends JPanel {
         grid.removeAll();
 
         Map<LocalDate, TimeOffEntry> entryMap = new HashMap<>();
-        for (TimeOffEntry e : service.entriesForMonth(visibleMonth)) entryMap.put(e.date(), e);
+        for (TimeOffEntry entry : service.entriesForMonth(visibleMonth)) {
+            entryMap.put(entry.date(), entry);
+        }
 
         LocalDate first = visibleMonth.atDay(1);
         int sundayBasedIndex = first.getDayOfWeek().getValue() % 7;
@@ -122,7 +125,7 @@ public class CalendarPanel extends JPanel {
             grid.add(new DayCell(cellDate, visibleMonth, entry));
             cellDate = cellDate.plusDays(1);
         }
-        ThemeManager.applyThemeRoles(this);
+
         revalidate();
         repaint();
     }
@@ -147,57 +150,59 @@ public class CalendarPanel extends JPanel {
             setMargin(new Insets(9, 10, 9, 10));
             setFocusPainted(false);
             setFocusable(false);
-            setOpaque(true);
-            setContentAreaFilled(true);
-            setBorderPainted(false);
             setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             setPreferredSize(new Dimension(110, 86));
             setMinimumSize(new Dimension(95, 80));
+            putClientProperty("FlatLaf.style", "arc: 14");
 
             boolean inMonth = YearMonth.from(date).equals(month);
             String dayText = Integer.toString(date.getDayOfMonth());
             String secondary = "";
+
             if (entry != null) {
                 if (entry.type().deductsBalance()) {
-                    secondary = "<br><b>" + entry.type().getCalendarLabel() + "</b><br>" + trimHours(entry.hours()) + " hrs";
+                    secondary = "<br><b>" + entry.type().getCalendarLabel() + "</b><br>" +
+                            trimHours(entry.hours()) + " hrs";
                 } else {
                     String descriptor = entry.notes() == null ? "" : entry.notes().trim();
                     if (descriptor.isBlank()) descriptor = entry.type().getCalendarLabel();
-                    secondary = "<br><b>" + escapeHtml(descriptor) + "</b><br><span style='font-size:9px'>" + entry.type().getCalendarLabel() + "</span>";
+                    secondary = "<br><b>" + escapeHtml(descriptor) +
+                            "</b><br><span style='font-size:9px'>" +
+                            entry.type().getCalendarLabel() + "</span>";
                 }
             }
+
             setText("<html><div style='width:100px'>" + dayText + secondary + "</div></html>");
 
             if (!inMonth) {
+                // Adjacent-month distinction now comes directly from FlatLaf's
+                // disabled button rendering for the active theme.
                 setEnabled(false);
-                setBackground(ThemeManager.adjacentCalendarCellColor());
-                setForeground(ThemeManager.mutedTextColor());
-                putClientProperty("FlatLaf.style", "arc: 14; borderWidth: 0");
+                setCursor(Cursor.getDefaultCursor());
             } else if (entry != null) {
-                setForeground(AppTheme.textColorFor(entry.type()));
+                // Time-off categories are semantic colors, independent of theme.
                 setBackground(AppTheme.colorFor(entry.type()));
+                setForeground(AppTheme.textColorFor(entry.type()));
                 putClientProperty("FlatLaf.style", "arc: 14; borderWidth: 0");
                 setToolTipText(buildTooltip(entry));
             } else if (date.equals(LocalDate.now())) {
-                setBackground(ThemeManager.calendarCellColor());
+                // Keep the normal FlatLaf tile background and only mark today.
                 setForeground(AppTheme.TODAY);
-                setBorderPainted(true);
-                putClientProperty("FlatLaf.style", "arc: 14; borderWidth: 2; borderColor: #59a14f");
+                putClientProperty("FlatLaf.style",
+                        "arc: 14; borderWidth: 2; borderColor: #59a14f");
                 setToolTipText("Today");
-            } else {
-                setBackground(ThemeManager.calendarCellColor());
-                setForeground(ThemeManager.textColor());
-                putClientProperty("FlatLaf.style", "arc: 14; borderWidth: 0");
             }
 
-            addActionListener(e -> dateClickHandler.accept(this.date));
+            if (inMonth) {
+                addActionListener(e -> dateClickHandler.accept(this.date));
+            }
         }
 
         private String buildTooltip(TimeOffEntry entry) {
             StringBuilder tip = new StringBuilder(entry.type().getDisplayName());
             if (entry.type().deductsBalance()) {
                 tip.append(" — ").append(entry.status().getDisplayName())
-                   .append(" — ").append(trimHours(entry.hours())).append(" hours");
+                        .append(" — ").append(trimHours(entry.hours())).append(" hours");
             } else {
                 tip.append(" — does not reduce Vacation or ETO");
             }
@@ -206,11 +211,15 @@ public class CalendarPanel extends JPanel {
         }
 
         private String trimHours(double hours) {
-            return hours == Math.rint(hours) ? Integer.toString((int) hours) : String.format("%.1f", hours);
+            return hours == Math.rint(hours)
+                    ? Integer.toString((int) hours)
+                    : String.format("%.1f", hours);
         }
 
         private String escapeHtml(String value) {
-            return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+            return value.replace("&", "&amp;")
+                    .replace("<", "&lt;")
+                    .replace(">", "&gt;");
         }
     }
 }
