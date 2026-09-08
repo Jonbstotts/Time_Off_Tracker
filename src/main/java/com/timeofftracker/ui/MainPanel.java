@@ -89,9 +89,10 @@ public class MainPanel extends JPanel {
 
     private void updateAppearanceButton() {
         ThemeManager.Theme effective = ThemeManager.effectiveThemeToday();
+        ThemeManager.ThemeMode mode = ThemeManager.savedMode();
         appearance.setText("Appearance");
-        String auto = ThemeManager.automaticSeasonalThemes() ? " • Auto seasonal on" : "";
-        appearance.setToolTipText("Current theme: " + effective.displayName() + auto);
+        appearance.setToolTipText("Current theme: " + effective.displayName()
+                + " • Mode: " + mode.displayName());
     }
 
     private void openDate(LocalDate date) {
