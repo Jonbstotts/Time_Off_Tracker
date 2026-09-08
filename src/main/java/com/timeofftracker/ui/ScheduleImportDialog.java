@@ -26,7 +26,8 @@ public class ScheduleImportDialog extends JDialog {
     private final ImportTableModel model = new ImportTableModel();
     private final JTable table = new JTable(model);
     private final JLabel fileLabel = AppTheme.muted(new JLabel("No schedule selected"));
-    private final JLabel summaryLabel = AppTheme.muted(new JLabel("Choose an annual schedule document to preview detected calendar days."));
+    private final JLabel summaryLabel = AppTheme.muted(new JLabel(
+            "Choose an annual schedule document to preview detected calendar days."));
     private boolean imported;
 
     public ScheduleImportDialog(Window owner, TimeOffService service, int targetYear) {
@@ -45,8 +46,8 @@ public class ScheduleImportDialog extends JDialog {
         heading.setLayout(new BoxLayout(heading, BoxLayout.Y_AXIS));
         heading.add(AppTheme.title("Import " + targetYear + " Annual Schedule"));
         heading.add(Box.createVerticalStrut(4));
-        JLabel hint = AppTheme.muted(new JLabel("PDF, DOCX, TXT, and CSV schedules are supported. Review the detected days before importing."));
-        heading.add(hint);
+        heading.add(AppTheme.muted(new JLabel(
+                "PDF, DOCX, TXT, and CSV schedules are supported. Review the detected days before importing.")));
         root.add(heading, BorderLayout.NORTH);
 
         JPanel center = new JPanel(new BorderLayout(10, 10));
@@ -87,7 +88,6 @@ public class ScheduleImportDialog extends JDialog {
         root.add(actions, BorderLayout.SOUTH);
 
         setContentPane(root);
-        ThemeManager.applyThemeRoles(root);
         setMinimumSize(new Dimension(850, 520));
         setSize(940, 620);
         setLocationRelativeTo(getOwner());
@@ -96,17 +96,18 @@ public class ScheduleImportDialog extends JDialog {
     private void chooseFile() {
         JFileChooser chooser = new JFileChooser();
         chooser.setDialogTitle("Choose Annual Schedule");
-        chooser.setFileFilter(new FileNameExtensionFilter("Schedule documents (PDF, DOCX, TXT, CSV)", "pdf", "docx", "txt", "csv"));
+        chooser.setFileFilter(new FileNameExtensionFilter(
+                "Schedule documents (PDF, DOCX, TXT, CSV)", "pdf", "docx", "txt", "csv"));
         if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) return;
 
         File file = chooser.getSelectedFile();
         fileLabel.setText(file.getName());
         try {
             List<ScheduleImportItem> detected = importer.readSchedule(file, targetYear).stream()
-                    .filter(i -> i.date().getYear() == targetYear)
+                    .filter(item -> item.date().getYear() == targetYear)
                     .toList();
             model.setItems(detected, service);
-            long existing = model.rows.stream().filter(r -> r.existing).count();
+            long existing = model.rows.stream().filter(row -> row.existing).count();
             summaryLabel.setText(detected.size() + " schedule day(s) detected" +
                     (existing > 0 ? " • " + existing + " already have calendar entries and are unchecked" : "") + ".");
             if (detected.isEmpty()) {
@@ -117,14 +118,17 @@ public class ScheduleImportDialog extends JDialog {
             }
         } catch (Exception ex) {
             model.setItems(List.of(), service);
-            JOptionPane.showMessageDialog(this, ex.getMessage(), "Unable to Read Schedule", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, ex.getMessage(),
+                    "Unable to Read Schedule", JOptionPane.ERROR_MESSAGE);
         }
     }
 
     private void importSelected() {
-        List<ImportRow> selected = model.rows.stream().filter(r -> r.selected).toList();
+        List<ImportRow> selected = model.rows.stream().filter(row -> row.selected).toList();
         if (selected.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Select at least one detected schedule day to import.", "Nothing Selected", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this,
+                    "Select at least one detected schedule day to import.",
+                    "Nothing Selected", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
 
@@ -145,10 +149,13 @@ public class ScheduleImportDialog extends JDialog {
                 importedCount++;
             }
             imported = importedCount > 0;
-            JOptionPane.showMessageDialog(this, importedCount + " schedule day(s) were added to the calendar.", "Schedule Imported", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this,
+                    importedCount + " schedule day(s) were added to the calendar.",
+                    "Schedule Imported", JOptionPane.INFORMATION_MESSAGE);
             dispose();
         } catch (RuntimeException ex) {
-            JOptionPane.showMessageDialog(this, ex.getMessage(), "Import Failed", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, ex.getMessage(),
+                    "Import Failed", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -186,10 +193,15 @@ public class ScheduleImportDialog extends JDialog {
         @Override public int getRowCount() { return rows.size(); }
         @Override public int getColumnCount() { return columns.length; }
         @Override public String getColumnName(int column) { return columns[column]; }
-        @Override public Class<?> getColumnClass(int column) { return column == 0 ? Boolean.class : column == 2 ? TimeOffType.class : String.class; }
-        @Override public boolean isCellEditable(int row, int column) { return !rows.get(row).existing && (column == 0 || column == 2 || column == 3); }
+        @Override public Class<?> getColumnClass(int column) {
+            return column == 0 ? Boolean.class : column == 2 ? TimeOffType.class : String.class;
+        }
+        @Override public boolean isCellEditable(int row, int column) {
+            return !rows.get(row).existing && (column == 0 || column == 2 || column == 3);
+        }
 
-        @Override public Object getValueAt(int rowIndex, int columnIndex) {
+        @Override
+        public Object getValueAt(int rowIndex, int columnIndex) {
             ImportRow row = rows.get(rowIndex);
             return switch (columnIndex) {
                 case 0 -> row.selected;
@@ -201,10 +213,11 @@ public class ScheduleImportDialog extends JDialog {
             };
         }
 
-        @Override public void setValueAt(Object value, int rowIndex, int columnIndex) {
+        @Override
+        public void setValueAt(Object value, int rowIndex, int columnIndex) {
             ImportRow row = rows.get(rowIndex);
             if (columnIndex == 0) row.selected = Boolean.TRUE.equals(value);
-            if (columnIndex == 2 && value instanceof TimeOffType t) row.type = t;
+            if (columnIndex == 2 && value instanceof TimeOffType type) row.type = type;
             if (columnIndex == 3) row.description = value == null ? "" : value.toString();
             fireTableCellUpdated(rowIndex, columnIndex);
         }
