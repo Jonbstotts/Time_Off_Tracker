@@ -52,7 +52,8 @@ public class TimeOffDialog extends JDialog {
         heading.setLayout(new BoxLayout(heading, BoxLayout.Y_AXIS));
         JLabel title = AppTheme.title(date.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")));
         heading.add(title);
-        JLabel sub = AppTheme.muted(new JLabel(editing ? "Update or remove this calendar entry." : "Choose how this day should be recorded."));
+        JLabel sub = AppTheme.muted(new JLabel(
+                editing ? "Update or remove this calendar entry." : "Choose how this day should be recorded."));
         heading.add(Box.createVerticalStrut(4));
         heading.add(sub);
         heading.add(Box.createVerticalStrut(6));
@@ -89,7 +90,10 @@ public class TimeOffDialog extends JDialog {
         JButton cancel = new JButton("Cancel");
         cancel.addActionListener(e -> dispose());
         JButton save = AppTheme.primaryButton(editing ? "Save Changes" : "Add Entry");
-        save.addActionListener(e -> { result = Result.SAVE; dispose(); });
+        save.addActionListener(e -> {
+            result = Result.SAVE;
+            dispose();
+        });
 
         JPanel actions = new JPanel(new BorderLayout());
         if (editing) {
@@ -106,6 +110,7 @@ public class TimeOffDialog extends JDialog {
             });
             actions.add(delete, BorderLayout.WEST);
         }
+
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         right.add(cancel);
         right.add(save);
@@ -113,7 +118,6 @@ public class TimeOffDialog extends JDialog {
         root.add(actions, BorderLayout.SOUTH);
 
         setContentPane(root);
-        ThemeManager.applyThemeRoles(root);
         pack();
         setLocationRelativeTo(getOwner());
     }
