@@ -66,7 +66,6 @@ public class SetupDialog extends JDialog {
         root.add(actions, BorderLayout.SOUTH);
 
         setContentPane(root);
-        ThemeManager.applyThemeRoles(root);
         pack();
         setSize(Math.max(getWidth(), 480), getHeight());
         setLocationRelativeTo(owner);
