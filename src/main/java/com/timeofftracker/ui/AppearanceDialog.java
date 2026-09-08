@@ -3,20 +3,23 @@ package com.timeofftracker.ui;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.time.LocalDate;
 import java.util.EnumMap;
 import java.util.Map;
 
 /**
- * Theme selection UI.
+ * Appearance settings with explicit manual vs. seasonal behavior.
  *
- * Selecting an item does not mutate the application's global look and feel.
- * The chosen FlatLaf theme is installed only when Save Appearance is pressed.
+ * Choosing a base theme automatically selects MANUAL mode. Seasonal mode is a
+ * separate opt-in behavior, so a manual selection is never silently replaced.
  */
 public class AppearanceDialog extends JDialog {
     private final JComboBox<ThemeManager.Theme> themeCombo = new JComboBox<>(ThemeManager.Theme.values());
-    private final JCheckBox automatic = new JCheckBox("Automatically use seasonal and holiday themes");
+    private final JRadioButton manualMode = new JRadioButton("Use selected theme");
+    private final JRadioButton seasonalMode = new JRadioButton("Automatically use seasonal and holiday themes");
     private final Map<ThemeManager.SeasonalEvent, JCheckBox> eventChecks = new EnumMap<>(ThemeManager.SeasonalEvent.class);
     private final JLabel description = new JLabel();
+    private boolean loading;
     private boolean saved;
 
     public AppearanceDialog(Window owner) {
@@ -25,7 +28,7 @@ public class AppearanceDialog extends JDialog {
         setContentPane(buildContent());
         loadValues();
         pack();
-        setMinimumSize(new Dimension(700, 560));
+        setMinimumSize(new Dimension(720, 590));
         setLocationRelativeTo(owner);
     }
 
@@ -39,7 +42,7 @@ public class AppearanceDialog extends JDialog {
         heading.add(AppTheme.title("Appearance & Themes"));
         heading.add(Box.createVerticalStrut(5));
         heading.add(AppTheme.muted(new JLabel(
-                "Choose an official FlatLaf theme. The selection is applied when you save.")));
+                "Choose how themes should behave. Selecting a theme switches to manual mode.")));
         root.add(heading, BorderLayout.NORTH);
 
         JPanel center = new JPanel();
@@ -47,13 +50,19 @@ public class AppearanceDialog extends JDialog {
         center.setLayout(new BoxLayout(center, BoxLayout.Y_AXIS));
 
         JPanel themeCard = AppTheme.card(new BorderLayout(12, 12));
-        JPanel picker = new JPanel(new BorderLayout(10, 6));
+        JPanel picker = new JPanel(new BorderLayout(10, 8));
         picker.setOpaque(false);
         picker.add(AppTheme.sectionTitle("Base theme"), BorderLayout.NORTH);
         picker.add(themeCombo, BorderLayout.CENTER);
         themeCard.add(picker, BorderLayout.NORTH);
+
+        JPanel manualRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        manualRow.setOpaque(false);
+        manualRow.add(manualMode);
+        themeCard.add(manualRow, BorderLayout.CENTER);
+
         description.setBorder(new EmptyBorder(4, 0, 0, 0));
-        themeCard.add(description, BorderLayout.CENTER);
+        themeCard.add(description, BorderLayout.SOUTH);
         center.add(themeCard);
         center.add(Box.createVerticalStrut(14));
 
@@ -63,7 +72,7 @@ public class AppearanceDialog extends JDialog {
         seasonalTop.setLayout(new BoxLayout(seasonalTop, BoxLayout.Y_AXIS));
         seasonalTop.add(AppTheme.sectionTitle("Automatic seasonal themes"));
         seasonalTop.add(Box.createVerticalStrut(7));
-        seasonalTop.add(automatic);
+        seasonalTop.add(seasonalMode);
         seasonalCard.add(seasonalTop, BorderLayout.NORTH);
 
         JPanel events = new JPanel(new GridLayout(0, 2, 8, 5));
@@ -76,11 +85,14 @@ public class AppearanceDialog extends JDialog {
         }
         seasonalCard.add(events, BorderLayout.CENTER);
         seasonalCard.add(AppTheme.muted(new JLabel(
-                "Seasonal themes temporarily replace the base theme and automatically return to it afterward.")),
-                BorderLayout.SOUTH);
+                "Seasonal mode uses the base theme outside enabled holiday windows.")), BorderLayout.SOUTH);
         center.add(seasonalCard);
 
         root.add(center, BorderLayout.CENTER);
+
+        ButtonGroup behaviorGroup = new ButtonGroup();
+        behaviorGroup.add(manualMode);
+        behaviorGroup.add(seasonalMode);
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         buttons.setOpaque(false);
@@ -93,46 +105,102 @@ public class AppearanceDialog extends JDialog {
         buttons.add(save);
         root.add(buttons, BorderLayout.SOUTH);
 
-        themeCombo.addActionListener(e -> refreshDescription());
-        automatic.addActionListener(e -> updateSeasonalEnabled());
+        themeCombo.addActionListener(e -> {
+            if (!loading) {
+                manualMode.setSelected(true);
+                updateModeControls();
+                refreshDescription();
+            }
+        });
+        manualMode.addActionListener(e -> {
+            updateModeControls();
+            refreshDescription();
+        });
+        seasonalMode.addActionListener(e -> {
+            updateModeControls();
+            refreshDescription();
+        });
+        for (JCheckBox box : eventChecks.values()) {
+            box.addActionListener(e -> refreshDescription());
+        }
         return root;
     }
 
     private void loadValues() {
+        loading = true;
         themeCombo.setSelectedItem(ThemeManager.savedTheme());
-        automatic.setSelected(ThemeManager.automaticSeasonalThemes());
+        if (ThemeManager.savedMode() == ThemeManager.ThemeMode.SEASONAL) {
+            seasonalMode.setSelected(true);
+        } else {
+            manualMode.setSelected(true);
+        }
         for (var entry : eventChecks.entrySet()) {
             entry.getValue().setSelected(ThemeManager.isEventEnabled(entry.getKey()));
         }
-        updateSeasonalEnabled();
+        loading = false;
+        updateModeControls();
         refreshDescription();
     }
 
-    private void updateSeasonalEnabled() {
-        boolean enabled = automatic.isSelected();
-        for (JCheckBox box : eventChecks.values()) box.setEnabled(enabled);
+    private void updateModeControls() {
+        boolean seasonal = seasonalMode.isSelected();
+        for (JCheckBox box : eventChecks.values()) box.setEnabled(seasonal);
     }
 
-    private void refreshDescription() {
-        ThemeManager.Theme theme = (ThemeManager.Theme) themeCombo.getSelectedItem();
-        if (theme == null) return;
-        description.setText("<html>" + theme.description() +
-                "<br><br><b>Currently active:</b> " + ThemeManager.appliedTheme().displayName() +
-                "</html>");
+    private ThemeManager.ThemeMode selectedMode() {
+        return seasonalMode.isSelected()
+                ? ThemeManager.ThemeMode.SEASONAL
+                : ThemeManager.ThemeMode.MANUAL;
     }
 
-    private void save() {
-        ThemeManager.Theme theme = (ThemeManager.Theme) themeCombo.getSelectedItem();
+    private Map<ThemeManager.SeasonalEvent, Boolean> selectedEvents() {
         Map<ThemeManager.SeasonalEvent, Boolean> enabled = new EnumMap<>(ThemeManager.SeasonalEvent.class);
         for (var entry : eventChecks.entrySet()) {
             enabled.put(entry.getKey(), entry.getValue().isSelected());
         }
+        return enabled;
+    }
+
+    private void refreshDescription() {
+        ThemeManager.Theme base = (ThemeManager.Theme) themeCombo.getSelectedItem();
+        if (base == null) return;
+
+        ThemeManager.ThemeMode mode = selectedMode();
+        Map<ThemeManager.SeasonalEvent, Boolean> events = selectedEvents();
+        ThemeManager.Theme effective = ThemeManager.resolveEffectiveTheme(base, mode, LocalDate.now(), events);
+        ThemeManager.SeasonalEvent event = mode == ThemeManager.ThemeMode.SEASONAL
+                ? ThemeManager.seasonalEventFor(LocalDate.now())
+                : null;
+        boolean eventEnabled = event != null && events.getOrDefault(event, true);
+
+        StringBuilder html = new StringBuilder("<html>");
+        html.append(base.description());
+        html.append("<br><br><b>After saving:</b> ").append(effective.displayName());
+        if (mode == ThemeManager.ThemeMode.MANUAL) {
+            html.append(" <span style='font-weight:normal'>(manual mode)</span>");
+        } else if (eventEnabled) {
+            html.append(" <span style='font-weight:normal'>(")
+                    .append(event.displayName())
+                    .append(" seasonal theme)</span>");
+        } else {
+            html.append(" <span style='font-weight:normal'>(base theme; no enabled seasonal override today)</span>");
+        }
+        html.append("<br><b>Currently active:</b> ").append(ThemeManager.appliedTheme().displayName());
+        html.append("</html>");
+        description.setText(html.toString());
+    }
+
+    private void save() {
+        ThemeManager.Theme theme = (ThemeManager.Theme) themeCombo.getSelectedItem();
+        ThemeManager.ThemeMode mode = selectedMode();
+        Map<ThemeManager.SeasonalEvent, Boolean> enabled = selectedEvents();
+
         saved = true;
+        dispose();
         ThemeManager.saveAppearance(
                 theme == null ? ThemeManager.Theme.FLAT_LIGHT : theme,
-                automatic.isSelected(),
+                mode,
                 enabled);
-        dispose();
     }
 
     public boolean wasSaved() {
